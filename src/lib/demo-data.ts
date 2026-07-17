@@ -4,6 +4,7 @@ import type {
   Club,
   ClubMembership,
   DropSlot,
+  JoinRequest,
   Notification,
   PlaylistDraft,
   UserProfile,
@@ -59,6 +60,17 @@ export const demoUsers: UserProfile[] = [
     createdAt: iso({ days: -55 }),
     updatedAt: iso({ days: -3 }),
   },
+  {
+    id: "user-maya",
+    clerkUserId: "demo_maya",
+    displayName: "Maya Ellis",
+    initials: "ME",
+    plan: "free",
+    emailNotifications: true,
+    themePreference: "system",
+    createdAt: iso({ days: -28 }),
+    updatedAt: iso({ hours: -8 }),
+  },
 ];
 
 export const demoClubs: Club[] = [
@@ -77,6 +89,12 @@ export const demoClubs: Club[] = [
       version: 4,
       updatedAt: iso({ days: -3 }),
     },
+    savedThemes: [{
+      name: "The long way home",
+      guidance: "Songs for taking one more block before turning toward the door.",
+      version: 5,
+      updatedAt: iso({ days: -1 }),
+    }],
     schedule: {
       timezone: "America/Chicago",
       startsOn: "2026-01-06",
@@ -135,12 +153,12 @@ export const demoClubs: Club[] = [
     accent: "#7c5cff",
     memberCount: 24,
     rotationMemberIds: ["user-priya", "user-marcus", "user-theo"],
-    currentTheme: {
+    savedThemes: [{
       name: "Chrome and concrete",
       guidance: "Hard surfaces, bright reflections, no sunrise in sight.",
       version: 7,
       updatedAt: iso({ days: -1 }),
-    },
+    }],
     schedule: {
       timezone: "America/New_York",
       startsOn: "2026-03-06",
@@ -178,6 +196,18 @@ export const demoMemberships: ClubMembership[] = demoClubs.flatMap((club) =>
   })),
 );
 
+export const demoJoinRequests: JoinRequest[] = [
+  {
+    id: "join-maya-needle",
+    clubId: "club-needle",
+    userId: "user-maya",
+    message: "I would love to bring a few left-field soul and jazz picks into the rotation.",
+    status: "pending",
+    createdAt: iso({ hours: -6 }),
+    updatedAt: iso({ hours: -6 }),
+  },
+];
+
 export const demoDrops: DropSlot[] = [
   {
     id: "drop-next",
@@ -199,6 +229,7 @@ export const demoDrops: DropSlot[] = [
     assignedUserId: "user-lena",
     scheduledFor: iso({ days: 2 }),
     playlist: {
+      sourceDraftId: "draft-2",
       provider: "apple-music",
       providerPlaylistId: "pl.u-b3b8V4etKZA9p",
       canonicalUrl: "https://music.apple.com/us/playlist/pl.u-b3b8V4etKZA9p",
@@ -236,6 +267,20 @@ export const demoDrops: DropSlot[] = [
       providerPlaylistId: "37i9dQZF1DX4JAvHpjipBk",
       canonicalUrl: "https://open.spotify.com/playlist/37i9dQZF1DX4JAvHpjipBk",
       embedUrl: "https://open.spotify.com/embed/playlist/37i9dQZF1DX4JAvHpjipBk?utm_source=generator&theme=0",
+      versions: [
+        {
+          provider: "spotify",
+          providerPlaylistId: "37i9dQZF1DX4JAvHpjipBk",
+          canonicalUrl: "https://open.spotify.com/playlist/37i9dQZF1DX4JAvHpjipBk",
+          embedUrl: "https://open.spotify.com/embed/playlist/37i9dQZF1DX4JAvHpjipBk?utm_source=generator&theme=0",
+        },
+        {
+          provider: "apple-music",
+          providerPlaylistId: "pl.u-b3b8V4etKZA9p",
+          canonicalUrl: "https://music.apple.com/us/playlist/pl.u-b3b8V4etKZA9p",
+          embedUrl: "https://embed.music.apple.com/us/playlist/pl.u-b3b8V4etKZA9p",
+        },
+      ],
       title: "Sunburn after dark",
       description: "Sticky drums, scorched guitars, and synths that refuse to cool down.",
       metadata: { providerTitle: "New Music Friday", ownerName: "Spotify" },
@@ -261,7 +306,7 @@ export const demoDrops: DropSlot[] = [
       title: "Neon receipts",
       description: "The sound of remembering where you were at 1:47 a.m.",
       metadata: { providerTitle: "danceXL" },
-      theme: { ...demoClubs[0].currentTheme, name: "Proof of a good night", version: 3 },
+      theme: { ...demoClubs[0].currentTheme!, name: "Proof of a good night", version: 3 },
     },
     createdAt: iso({ days: -17 }),
     updatedAt: iso({ days: -10 }),
@@ -276,6 +321,20 @@ export const demoDrafts: PlaylistDraft[] = [
     providerPlaylistId: "37i9dQZF1DX4JAvHpjipBk",
     canonicalUrl: "https://open.spotify.com/playlist/37i9dQZF1DX4JAvHpjipBk",
     embedUrl: "https://open.spotify.com/embed/playlist/37i9dQZF1DX4JAvHpjipBk?utm_source=generator&theme=0",
+    versions: [
+      {
+        provider: "spotify",
+        providerPlaylistId: "37i9dQZF1DX4JAvHpjipBk",
+        canonicalUrl: "https://open.spotify.com/playlist/37i9dQZF1DX4JAvHpjipBk",
+        embedUrl: "https://open.spotify.com/embed/playlist/37i9dQZF1DX4JAvHpjipBk?utm_source=generator&theme=0",
+      },
+      {
+        provider: "apple-music",
+        providerPlaylistId: "pl.u-b3b8V4etKZA9p",
+        canonicalUrl: "https://music.apple.com/us/playlist/pl.u-b3b8V4etKZA9p",
+        embedUrl: "https://embed.music.apple.com/us/playlist/pl.u-b3b8V4etKZA9p",
+      },
+    ],
     title: "Sunburn after dark",
     description: "Sticky drums, scorched guitars, and synths that refuse to cool down.",
     metadata: { providerTitle: "New Music Friday" },

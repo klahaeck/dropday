@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Send, SmilePlus, Users } from "lucide-react";
 import { toggleChatReaction } from "@/lib/chat-reactions";
+import { normalizeClubAccent } from "@/lib/club-accent";
 import type { ChatMessage } from "@/types/domain";
 
 const quickReactions = ["🔥", "💿", "❤️", "🫡"];
@@ -13,12 +14,14 @@ export function ChatPanel({
   initialMessages,
   currentUser,
   realtimeEnabled,
+  clubAccent,
 }: {
   threadType: "club" | "drop";
   threadId: string;
   initialMessages: ChatMessage[];
   currentUser: { id: string; displayName: string; initials: string };
   realtimeEnabled: boolean;
+  clubAccent?: string;
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState("");
@@ -86,7 +89,7 @@ export function ChatPanel({
   }
 
   return (
-    <section className="chat-panel">
+    <section className={`chat-panel${threadType === "club" ? " chat-panel-club" : ""}`} style={threadType === "club" ? { "--club-accent": normalizeClubAccent(clubAccent) } as React.CSSProperties : undefined}>
       <header className="chat-header">
         <div><span className="section-kicker">Live room</span><h2>{threadType === "club" ? "Club chat" : "Drop chat"}</h2></div>
         <span className="presence"><Users size={14} /> {onlineCount} here</span>

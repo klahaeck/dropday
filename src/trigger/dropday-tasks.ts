@@ -37,7 +37,7 @@ export const sendDropReminderTask = task({
     const id = `notification_reminder_${drop.occurrenceKey}_${payload.offsetMinutes}`;
     const notification: Notification = {
       id, userId: user.id, kind: "reminder", title: `Your ${club.name} drop is coming up`,
-      body: `${payload.offsetMinutes >= 1440 ? `${payload.offsetMinutes / 1440} day` : `${payload.offsetMinutes / 60} hour`} reminder for ${club.currentTheme.name}.`,
+      body: `${payload.offsetMinutes >= 1440 ? `${payload.offsetMinutes / 1440} day` : `${payload.offsetMinutes / 60} hour`} reminder for ${club.currentTheme?.name ?? "your freeform drop"}.`,
       href: `/app/clubs/${club.slug}`, createdAt: new Date().toISOString(),
     };
     await db.collection<Notification>("notifications").updateOne({ id }, { $setOnInsert: notification }, { upsert: true });

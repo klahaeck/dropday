@@ -1,10 +1,10 @@
 # Design QA
 
-- Source visual truth path: `/Users/khaeck/Desktop/Screenshot 2026-07-17 at 12.46.46 PM.png`
-- Requested target: stack the theme fields vertically and replace the club Description textarea with the existing rich-text editor pattern.
+- Source visual truth path: `/Users/khaeck/Desktop/Screenshot 2026-07-17 at 2.25.14 PM.png`
+- Requested target: replace the Prepared playlist dropdown with a modal selector, save a newly selected playlist immediately, and let the user exit without changing the current playlist.
 - Implementation screenshot path: unavailable; the in-app browser runtime failed during connection with `Cannot redefine property: process`.
-- Viewport: source image is 859 × 229; an equivalent implementation viewport could not be captured.
-- State: authenticated new-club form, First theme section; rendered implementation state could not be opened.
+- Viewport: source image is 318 × 453; an equivalent implementation viewport could not be captured.
+- State: authenticated club overview, Next drop card; neither the closed selector nor open modal could be browser-captured.
 
 ## Full-view comparison evidence
 
@@ -12,15 +12,15 @@ Blocked. The source image was opened, but browser-rendered implementation eviden
 
 ## Focused region comparison evidence
 
-Blocked for the same reason. Source-code inspection confirms that the First theme grid now uses a single-column class and that Description renders the established rich-text toolbar/editor markup, but code inspection is not a visual comparison.
+Blocked for the same reason. Source-code inspection confirms that the Prepared playlist control is now a button and the modal renders a selectable list, but code inspection is not a visual comparison.
 
 ## Findings
 
-- [P1] Browser-rendered visual QA is unavailable.
-  - Location: new-club form.
+- [P1] Browser-rendered visual and interaction QA is unavailable.
+  - Location: Next drop playlist selector and modal.
   - Evidence: the source image is available; no implementation screenshot could be captured.
-  - Impact: layout, focus styling, and interaction fidelity could not be visually confirmed.
-  - Fix: reconnect the in-app browser, capture the authenticated form at the same width, and compare the Description and First theme sections.
+  - Impact: modal sizing, card rhythm, focus visibility, and interaction behavior could not be confirmed in the rendered app.
+  - Fix: reconnect the in-app browser, capture the closed selector at 318 × 453, open the modal, select a different playlist, and compare both states.
 
 ## Comparison history
 
@@ -28,7 +28,7 @@ Blocked for the same reason. Source-code inspection confirms that the First them
 
 ## Primary interactions tested
 
-- Not browser-tested. Static checks cover the rich-text sanitizer, plain-text fallback generation, TypeScript, lint, tests, and production compilation.
+- Not browser-tested. Static inspection covers opening and closing the modal, immediate save on playlist selection, the keep-current path, Escape handling, backdrop dismissal, focus trapping, focus restoration, loading/error feedback, and body-scroll locking.
 
 ## Console errors checked
 
@@ -36,9 +36,12 @@ Blocked for the same reason. Source-code inspection confirms that the First them
 
 ## Implementation checklist
 
-- [x] Stack Theme, Guidance, and Theme image fields in one column.
-- [x] Add bold, italic, and bulleted-list controls to club Description.
-- [x] Sanitize formatted HTML server-side and keep a plain-text fallback.
-- [ ] Capture and compare the rendered authenticated form.
+- [x] Replace the playlist dropdown with a selected-playlist button.
+- [x] Open an accessible modal containing the user’s prepared playlists.
+- [x] Save and display a newly selected playlist without a second confirmation button.
+- [x] Provide a Keep current playlist action and non-mutating dismissal paths.
+- [x] Support Escape, backdrop dismissal, focus trapping, and focus restoration.
+- [x] Add responsive modal styling for narrow viewports.
+- [ ] Capture and compare the rendered closed and open states.
 
 final result: blocked
