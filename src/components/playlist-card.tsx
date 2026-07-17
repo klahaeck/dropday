@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Apple, ArrowUpRight, Music2, UserRound } from "lucide-react";
+import { Apple, ArrowUpRight, CalendarCheck, Music2, UserRound } from "lucide-react";
 import { Pill } from "@/components/pill";
 import { PlaylistDescription } from "@/components/playlist-description";
+import { truncateDescription } from "@/lib/description-preview";
+import { getPlaylistVersions } from "@/lib/playlist-providers";
 import type { DropSlot, PlaylistDraft } from "@/types/domain";
 
 type PlaylistLike = PlaylistDraft | NonNullable<DropSlot["playlist"]>;
@@ -16,12 +18,17 @@ export function PlaylistCard({
   href,
   kicker,
   droppedBy,
+  expandableDescription = true,
+  attachedClubNames = [],
 }: {
   playlist: PlaylistLike;
   href?: string;
   kicker?: string;
   droppedBy?: string;
+  expandableDescription?: boolean;
+  attachedClubNames?: string[];
 }) {
+  const versions = getPlaylistVersions(playlist);
   return (
     <article className="playlist-card">
       <div className={`playlist-cover playlist-cover-${playlist.provider}`}>
@@ -31,17 +38,22 @@ export function PlaylistCard({
       </div>
       <div className="playlist-card-body">
         <div className="eyebrow-row">
-          <Pill tone={playlist.provider === "spotify" ? "green" : "neutral"}>
-            {playlist.provider === "spotify" ? <Music2 size={12} /> : <Apple size={12} />}
-            {playlist.provider === "spotify" ? "Spotify" : "Apple Music"}
-          </Pill>
+          <div className="playlist-provider-pills">
+            {versions.map((version) => <Pill key={version.provider} tone={version.provider === "spotify" ? "green" : "neutral"}>
+              {version.provider === "spotify" ? <Music2 size={12} /> : <Apple size={12} />}
+              {version.provider === "spotify" ? "Spotify" : "Apple Music"}
+            </Pill>)}
+          </div>
           {kicker && <span className="tiny-label">{kicker}</span>}
         </div>
         <h3>{playlist.title}</h3>
-        <PlaylistDescription html={playlist.descriptionHtml} fallback={playlist.description} className="playlist-description" />
+        {expandableDescription
+          ? <PlaylistDescription html={playlist.descriptionHtml} fallback={playlist.description} className="playlist-description" />
+          : <div className="playlist-description"><p>{truncateDescription(playlist.description)}</p></div>}
+        {attachedClubNames.length > 0 && <div className="playlist-card-attachment"><CalendarCheck size={13} /> <span>Attached to <strong>{attachedClubNames.join(", ")}</strong></span></div>}
         {!isDraft(playlist) && droppedBy && <div className="playlist-card-author"><UserRound size={13} /> Dropped by <strong>{droppedBy}</strong></div>}
         <div className="playlist-card-foot">
-          <span>{isDraft(playlist) ? "Prepared drop" : playlist.theme.name}</span>
+          <span>{isDraft(playlist) ? "Prepared drop" : playlist.theme?.name ?? "Freeform"}</span>
           {href && <ArrowUpRight size={17} />}
         </div>
       </div>

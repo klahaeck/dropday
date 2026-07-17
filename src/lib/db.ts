@@ -32,6 +32,11 @@ export async function ensureIndexes() {
     db.collection("clubs").createIndex({ visibility: 1, "custody.status": 1, updatedAt: -1 }),
     db.collection("memberships").createIndex({ clubId: 1, userId: 1 }, { unique: true }),
     db.collection("memberships").createIndex({ userId: 1, status: 1 }),
+    db.collection("joinRequests").createIndex(
+      { clubId: 1, userId: 1 },
+      { unique: true, partialFilterExpression: { status: "pending" }, name: "one_pending_join_request_per_user" },
+    ),
+    db.collection("joinRequests").createIndex({ clubId: 1, status: 1, createdAt: 1 }),
     db.collection("drops").createIndex({ clubId: 1, occurrenceKey: 1 }, { unique: true }),
     db.collection("drops").createIndex({ clubId: 1, status: 1, scheduledFor: -1 }),
     db.collection("messages").createIndex({ threadType: 1, threadId: 1, createdAt: -1 }),

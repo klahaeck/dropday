@@ -1,10 +1,15 @@
-import type { PlaylistProvider, PlaylistMetadata } from "@/types/domain";
+import type { PlaylistProvider, PlaylistMetadata, PlaylistVersion } from "@/types/domain";
 
 export interface NormalizedPlaylist {
   provider: PlaylistProvider;
   providerPlaylistId: string;
   canonicalUrl: string;
   embedUrl: string;
+}
+
+export interface ResolvedPlaylist extends NormalizedPlaylist {
+  metadata: PlaylistMetadata;
+  warning?: string;
 }
 
 export interface PlaylistProviderAdapter {
@@ -82,7 +87,7 @@ export function normalizePlaylistUrl(input: string): NormalizedPlaylist {
   return adapter.normalize(url);
 }
 
-export async function resolvePlaylist(input: string) {
+export async function resolvePlaylist(input: string): Promise<ResolvedPlaylist> {
   const normalized = normalizePlaylistUrl(input);
   const adapter = playlistAdapters.find((candidate) => candidate.provider === normalized.provider)!;
   try {
@@ -94,4 +99,19 @@ export async function resolvePlaylist(input: string) {
       warning: "The link is valid, but provider artwork and metadata could not be loaded.",
     };
   }
+}
+
+type PlaylistWithVersions = PlaylistVersion & { versions?: PlaylistVersion[] };
+
+export function getPlaylistVersions(playlist: PlaylistWithVersions): PlaylistVersion[] {
+  const primary = {
+    provider: playlist.provider,
+    providerPlaylistId: playlist.providerPlaylistId,
+    canonicalUrl: playlist.canonicalUrl,
+    embedUrl: playlist.embedUrl,
+  };
+  const versions = [primary, ...(playlist.versions ?? [])];
+  return versions.filter((version, index) =>
+    versions.findIndex((candidate) => candidate.provider === version.provider) === index
+  );
 }

@@ -8,16 +8,10 @@ import {
   clubDescriptionToText,
   sanitizeClubDescriptionHtml,
 } from "@/lib/club-description";
+import { CLUB_ACCENT_PATTERN } from "@/lib/club-accent";
 import { getDb } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import { getClubBySlug, getClubMemberships } from "@/lib/repository";
-import { plainTextToRichTextHtml } from "@/lib/rich-text";
-import {
-  THEME_DESCRIPTION_HTML_MAX_LENGTH,
-  THEME_DESCRIPTION_MAX_LENGTH,
-  sanitizeThemeDescriptionHtml,
-  themeDescriptionToText,
-} from "@/lib/theme-description";
 import type { Club } from "@/types/domain";
 
 const imageValue = z.string().url().max(1_000).nullable().optional();
@@ -25,11 +19,8 @@ const schema = z.object({
   name: z.string().trim().min(2).max(70),
   description: z.string().trim().min(10).max(CLUB_DESCRIPTION_MAX_LENGTH),
   descriptionHtml: z.string().max(CLUB_DESCRIPTION_HTML_MAX_LENGTH).optional(),
-  theme: z.string().trim().min(2).max(100),
-  guidance: z.string().trim().max(THEME_DESCRIPTION_MAX_LENGTH),
-  guidanceHtml: z.string().max(THEME_DESCRIPTION_HTML_MAX_LENGTH),
+  accent: z.string().regex(CLUB_ACCENT_PATTERN, "Choose a valid primary color.").transform((value) => value.toLowerCase()),
   clubImageUrl: imageValue,
-  themeImageUrl: imageValue,
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -46,25 +37,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   if (description.length > CLUB_DESCRIPTION_MAX_LENGTH) {
     return NextResponse.json({ error: `Keep the description to ${CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 });
   }
-  const sanitizedGuidanceHtml = sanitizeThemeDescriptionHtml(parsed.data.guidanceHtml);
-  const guidance = sanitizedGuidanceHtml ? themeDescriptionToText(sanitizedGuidanceHtml) : parsed.data.guidance;
-  const guidanceHtml = guidance && sanitizedGuidanceHtml ? sanitizedGuidanceHtml : undefined;
-  if (guidance.length > THEME_DESCRIPTION_MAX_LENGTH) {
-    return NextResponse.json({ error: `Keep the theme description to ${THEME_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 });
-  }
-
-  const newArtwork = [parsed.data.clubImageUrl, parsed.data.themeImageUrl].filter((value): value is string => typeof value === "string");
-  if (!features.clubAdminTools || !features.clubThemes) {
+  const newArtwork = [parsed.data.clubImageUrl].filter((value): value is string => typeof value === "string");
+  if (!features.clubAdminTools) {
     await Promise.all(newArtwork.map(discardArtwork));
-    return NextResponse.json({ error: "Your current plan does not include these club administration features." }, { status: 403 });
+    return NextResponse.json({ error: "Your current plan does not include club administration tools." }, { status: 403 });
   }
   if (parsed.data.clubImageUrl && !isOwnedArtworkUrl(parsed.data.clubImageUrl, "club", profile.id)) {
     return NextResponse.json({ error: "This club image does not belong to your account." }, { status: 403 });
   }
-  if (parsed.data.themeImageUrl && !isOwnedArtworkUrl(parsed.data.themeImageUrl, "theme", profile.id)) {
-    return NextResponse.json({ error: "This theme image does not belong to your account." }, { status: 403 });
-  }
-
   const club = await getClubBySlug(slug);
   if (!club) {
     await Promise.all(newArtwork.map(discardArtwork));
@@ -81,42 +61,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     return NextResponse.json({ demo: true });
   }
 
-  const existingGuidanceHtml = club.currentTheme.guidanceHtml
-    ? sanitizeThemeDescriptionHtml(club.currentTheme.guidanceHtml)
-    : plainTextToRichTextHtml(club.currentTheme.guidance ?? "");
-  const themeChanged = parsed.data.theme !== club.currentTheme.name
-    || guidance !== (club.currentTheme.guidance ?? "")
-    || (guidanceHtml ?? "") !== existingGuidanceHtml;
-  const themeUpdated = themeChanged || parsed.data.themeImageUrl !== undefined;
   const timestamp = new Date().toISOString();
   const setValues: Record<string, string> = {
     name: parsed.data.name,
     description,
-    "currentTheme.name": parsed.data.theme,
+    accent: parsed.data.accent,
     updatedAt: timestamp,
   };
   const unsetValues: Record<string, ""> = {};
   if (descriptionHtml) setValues.descriptionHtml = descriptionHtml;
   else unsetValues.descriptionHtml = "";
-  if (guidance) setValues["currentTheme.guidance"] = guidance;
-  else unsetValues["currentTheme.guidance"] = "";
-  if (guidanceHtml) setValues["currentTheme.guidanceHtml"] = guidanceHtml;
-  else unsetValues["currentTheme.guidanceHtml"] = "";
-  if (themeUpdated) setValues["currentTheme.updatedAt"] = timestamp;
   if (parsed.data.clubImageUrl !== undefined) {
     if (parsed.data.clubImageUrl === null) unsetValues.imageUrl = "";
     else setValues.imageUrl = parsed.data.clubImageUrl;
-  }
-  if (parsed.data.themeImageUrl !== undefined) {
-    if (parsed.data.themeImageUrl === null) unsetValues["currentTheme.imageUrl"] = "";
-    else setValues["currentTheme.imageUrl"] = parsed.data.themeImageUrl;
   }
 
   try {
     const update = {
       $set: setValues,
       ...(Object.keys(unsetValues).length ? { $unset: unsetValues } : {}),
-      ...(themeUpdated ? { $inc: { "currentTheme.version": 1 } } : {}),
     };
     await (await getDb()).collection<Club>("clubs").updateOne({ id: club.id }, update);
   } catch {
@@ -126,17 +89,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
 
   const replacedArtwork = [
     parsed.data.clubImageUrl !== undefined && parsed.data.clubImageUrl !== club.imageUrl ? club.imageUrl : undefined,
-    parsed.data.themeImageUrl !== undefined && parsed.data.themeImageUrl !== club.currentTheme.imageUrl ? club.currentTheme.imageUrl : undefined,
   ].filter((value): value is string => Boolean(value));
   await Promise.all(replacedArtwork.map(discardArtwork));
   return NextResponse.json({
     name: parsed.data.name,
     description,
     descriptionHtml,
-    theme: parsed.data.theme,
-    guidance,
-    guidanceHtml,
+    accent: parsed.data.accent,
     clubImageUrl: parsed.data.clubImageUrl,
-    themeImageUrl: parsed.data.themeImageUrl,
   });
 }

@@ -78,7 +78,9 @@ export interface Club {
   accent: string;
   memberCount: number;
   rotationMemberIds: Id[];
-  currentTheme: ClubTheme;
+  currentTheme?: ClubTheme;
+  themeHistory?: ClubTheme[];
+  savedThemes?: ClubTheme[];
   schedule: RecurrenceConfig;
   activeDropId?: Id;
   custody: OwnershipCustody;
@@ -126,25 +128,27 @@ export interface PlaylistMetadata {
   trackCount?: number;
 }
 
-export interface PlaylistSnapshot {
+export interface PlaylistVersion {
   provider: PlaylistProvider;
   providerPlaylistId: string;
   canonicalUrl: string;
   embedUrl: string;
+}
+
+export interface PlaylistSnapshot extends PlaylistVersion {
+  sourceDraftId?: Id;
+  versions?: PlaylistVersion[];
   title: string;
   description: string;
   descriptionHtml?: string;
   metadata: PlaylistMetadata;
-  theme: ClubTheme;
+  theme?: ClubTheme;
 }
 
-export interface PlaylistDraft {
+export interface PlaylistDraft extends PlaylistVersion {
   id: Id;
   ownerId: Id;
-  provider: PlaylistProvider;
-  providerPlaylistId: string;
-  canonicalUrl: string;
-  embedUrl: string;
+  versions?: PlaylistVersion[];
   title: string;
   description: string;
   descriptionHtml?: string;

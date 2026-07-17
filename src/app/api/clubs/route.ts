@@ -8,21 +8,24 @@ import {
   clubDescriptionToText,
   sanitizeClubDescriptionHtml,
 } from "@/lib/club-description";
+import { CLUB_ACCENT_PATTERN, DEFAULT_CLUB_ACCENT } from "@/lib/club-accent";
 import { getDb, getMongoClient } from "@/lib/db";
 import { getOwnershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
 import { nextOccurrences, occurrenceKey, toRRule } from "@/lib/scheduling";
 import { countOwnedClubs, createId } from "@/lib/repository";
 import { scheduleDropTasks } from "@/lib/scheduler";
+import { THEME_DESCRIPTION_MAX_LENGTH } from "@/lib/theme-description";
 import type { Club, ClubMembership, DropSlot, RecurrenceConfig } from "@/types/domain";
 
 const schema = z.object({
-  name: z.string().trim().min(2).max(70), description: z.string().trim().min(10).max(500),
+  name: z.string().trim().min(2).max(70), description: z.string().trim().min(10).max(CLUB_DESCRIPTION_MAX_LENGTH),
   descriptionHtml: z.string().max(CLUB_DESCRIPTION_HTML_MAX_LENGTH).optional(),
+  accent: z.string().regex(CLUB_ACCENT_PATTERN, "Choose a valid primary color.").transform((value) => value.toLowerCase()).default(DEFAULT_CLUB_ACCENT),
   visibility: z.enum(["public", "private"]), startsOn: z.string().date(), localTime: z.string().regex(/^\d{2}:\d{2}$/),
   timezone: z.string().min(3).max(80), frequency: z.enum(["daily", "weekly", "monthly"]),
-  interval: z.coerce.number().int().min(1).max(52), weekdays: z.string().optional(), theme: z.string().trim().min(2).max(100),
-  guidance: z.string().trim().max(400).optional(),
+  interval: z.coerce.number().int().min(1).max(52), weekdays: z.string().optional(), theme: z.string().trim().min(2).max(100).optional(),
+  guidance: z.string().trim().max(THEME_DESCRIPTION_MAX_LENGTH).optional(),
   clubImageUrl: z.string().url().max(1_000).optional(), themeImageUrl: z.string().url().max(1_000).optional(),
 });
 
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
   if (description.length > CLUB_DESCRIPTION_MAX_LENGTH) {
     return NextResponse.json({ error: `Keep the description to ${CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 });
   }
+  const hasTheme = Boolean(parsed.data.theme);
   const uploadedArtwork = [parsed.data.clubImageUrl, parsed.data.themeImageUrl].filter((value): value is string => Boolean(value));
   if (parsed.data.clubImageUrl && !isOwnedArtworkUrl(parsed.data.clubImageUrl, "club", profile.id)) {
     return NextResponse.json({ error: "This club image does not belong to your account." }, { status: 403 });
@@ -50,8 +54,12 @@ export async function POST(request: Request) {
   if (parsed.data.themeImageUrl && !isOwnedArtworkUrl(parsed.data.themeImageUrl, "theme", profile.id)) {
     return NextResponse.json({ error: "This theme image does not belong to your account." }, { status: 403 });
   }
+  if (!hasTheme && (parsed.data.guidance || parsed.data.themeImageUrl)) {
+    await discardArtwork(parsed.data.themeImageUrl);
+    return NextResponse.json({ error: "Add a theme name before adding theme guidance or artwork." }, { status: 400 });
+  }
   const canHost = features.ownOneClub || features.ownFiveClubs || features.ownUnlimitedClubs;
-  if (!canHost || !features.customSchedules || !features.clubThemes || !features.clubAdminTools) {
+  if (!canHost || !features.customSchedules || !features.clubAdminTools || (hasTheme && !features.clubThemes)) {
     await Promise.all(uploadedArtwork.map(discardArtwork));
     return NextResponse.json({ error: "Your current plan does not include the club hosting features." }, { status: 403 });
   }
@@ -89,8 +97,10 @@ export async function POST(request: Request) {
   const club: Club = {
     id, slug, name: parsed.data.name, description, descriptionHtml, visibility: parsed.data.visibility,
     imageUrl: parsed.data.clubImageUrl,
-    accent: "#ff5c35", memberCount: 1, rotationMemberIds: [profile.id],
-    currentTheme: { name: parsed.data.theme, guidance: parsed.data.guidance, imageUrl: parsed.data.themeImageUrl, version: 1, updatedAt: timestamp },
+    accent: parsed.data.accent, memberCount: 1, rotationMemberIds: [profile.id],
+    ...(hasTheme ? { currentTheme: { name: parsed.data.theme!, guidance: parsed.data.guidance, imageUrl: parsed.data.themeImageUrl, version: 1, updatedAt: timestamp } } : {}),
+    themeHistory: [],
+    savedThemes: [],
     schedule, activeDropId: dropId, custody: { status: "active", activeOwnerId: profile.id, recoveryClaimantId: null },
     createdAt: timestamp, updatedAt: timestamp,
   };

@@ -5,6 +5,7 @@ import {
   demoClubs,
   demoDrafts,
   demoDrops,
+  demoJoinRequests,
   demoMemberships,
   demoMessages,
   demoNotifications,
@@ -16,6 +17,7 @@ import type {
   Club,
   ClubMembership,
   DropSlot,
+  JoinRequest,
   Notification,
   PlaylistDraft,
   UserProfile,
@@ -42,9 +44,56 @@ export async function getClubBySlug(slug: string): Promise<Club | null> {
   return (await getDb()).collection<Club>("clubs").findOne({ slug });
 }
 
+export async function getClubById(clubId: string): Promise<Club | null> {
+  if (!integrations.mongo) return demoClubs.find((club) => club.id === clubId) ?? null;
+  return (await getDb()).collection<Club>("clubs").findOne({ id: clubId });
+}
+
 export async function getClubMemberships(clubId: string): Promise<ClubMembership[]> {
   if (!integrations.mongo) return demoMemberships.filter((item) => item.clubId === clubId && item.status === "active");
   return (await getDb()).collection<ClubMembership>("memberships").find({ clubId, status: "active" }).toArray();
+}
+
+export async function listPendingJoinRequests(clubId: string): Promise<JoinRequest[]> {
+  if (!integrations.mongo) {
+    return demoJoinRequests
+      .filter((request) => request.clubId === clubId && request.status === "pending")
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+  return (await getDb()).collection<JoinRequest>("joinRequests")
+    .find({ clubId, status: "pending" })
+    .sort({ createdAt: 1 })
+    .toArray();
+}
+
+export async function getPendingJoinRequest(clubId: string, userId: string): Promise<JoinRequest | null> {
+  if (!integrations.mongo) {
+    return demoJoinRequests.find((request) =>
+      request.clubId === clubId && request.userId === userId && request.status === "pending"
+    ) ?? null;
+  }
+  return (await getDb()).collection<JoinRequest>("joinRequests").findOne({ clubId, userId, status: "pending" });
+}
+
+export async function createOrGetPendingJoinRequest(
+  joinRequest: JoinRequest,
+): Promise<{ request: JoinRequest; created: boolean }> {
+  if (!integrations.mongo) {
+    const existing = demoJoinRequests.find((request) =>
+      request.clubId === joinRequest.clubId && request.userId === joinRequest.userId && request.status === "pending"
+    );
+    if (existing) return { request: existing, created: false };
+    demoJoinRequests.push(joinRequest);
+    return { request: joinRequest, created: true };
+  }
+
+  const stored = await (await getDb()).collection<JoinRequest>("joinRequests").findOneAndUpdate(
+    { clubId: joinRequest.clubId, userId: joinRequest.userId, status: "pending" },
+    { $setOnInsert: joinRequest },
+    { upsert: true, returnDocument: "after" },
+  );
+  if (!stored) throw new Error("Could not create join request");
+  return { request: stored, created: stored.id === joinRequest.id };
 }
 
 export async function getClubDrops(clubId: string): Promise<DropSlot[]> {
@@ -60,6 +109,13 @@ export async function getDropById(dropId: string): Promise<DropSlot | null> {
 export async function listDrafts(userId: string): Promise<PlaylistDraft[]> {
   if (!integrations.mongo) return demoDrafts.filter((draft) => draft.ownerId === userId);
   return (await getDb()).collection<PlaylistDraft>("playlistDrafts").find({ ownerId: userId }).sort({ updatedAt: -1 }).toArray();
+}
+
+export async function getDraftByIdForOwner(draftId: string, ownerId: string): Promise<PlaylistDraft | null> {
+  if (!integrations.mongo) {
+    return demoDrafts.find((draft) => draft.id === draftId && draft.ownerId === ownerId) ?? null;
+  }
+  return (await getDb()).collection<PlaylistDraft>("playlistDrafts").findOne({ id: draftId, ownerId });
 }
 
 export async function listNotifications(userId: string): Promise<Notification[]> {
@@ -90,6 +146,19 @@ export async function insertMessage(message: ChatMessage): Promise<void> {
 export async function insertDraft(draft: PlaylistDraft): Promise<void> {
   if (!integrations.mongo) return;
   await (await getDb()).collection<PlaylistDraft>("playlistDrafts").insertOne(draft);
+}
+
+export async function updateDraftForOwner(draft: PlaylistDraft): Promise<boolean> {
+  if (!integrations.mongo) {
+    const index = demoDrafts.findIndex((item) => item.id === draft.id && item.ownerId === draft.ownerId);
+    if (index === -1) return false;
+    demoDrafts[index] = draft;
+    return true;
+  }
+  const { id, ownerId, ...updates } = draft;
+  const result = await (await getDb()).collection<PlaylistDraft>("playlistDrafts")
+    .updateOne({ id, ownerId }, { $set: updates });
+  return result.matchedCount === 1;
 }
 
 export async function countActiveMemberships(userId: string): Promise<number> {

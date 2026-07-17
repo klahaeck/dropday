@@ -15,7 +15,9 @@ import { consumeRateLimit } from "@/lib/rate-limit";
 import type { PlaylistDraft, PlaylistMetadata } from "@/types/domain";
 
 const schema = z.object({
-  url: z.string().url().max(500),
+  url: z.string().trim().max(500).optional(),
+  spotifyUrl: z.string().trim().max(500).optional(),
+  appleMusicUrl: z.string().trim().max(500).optional(),
   title: z.string().trim().min(2).max(100),
   descriptionHtml: z.string().max(PLAYLIST_DESCRIPTION_HTML_MAX_LENGTH),
   artworkUrl: z.string().url().max(1_000).refine((value) => {
@@ -24,6 +26,9 @@ const schema = z.object({
       && url.hostname.endsWith(".public.blob.vercel-storage.com")
       && url.pathname.startsWith("/artwork/playlist/");
   }, "Upload artwork through Vercel Blob").optional(),
+}).refine((value) => value.url || value.spotifyUrl || value.appleMusicUrl, {
+  message: "Add a Spotify or Apple Music playlist URL",
+  path: ["spotifyUrl"],
 });
 
 export async function POST(request: Request) {
@@ -51,18 +56,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many drafts. Try again in a minute." }, { status: 429 });
   }
   try {
-    const resolved = await resolvePlaylist(parsed.data.url);
-    const metadata: PlaylistMetadata = resolved.metadata;
+    const requestedVersions = [
+      parsed.data.spotifyUrl ? { expectedProvider: "spotify" as const, url: parsed.data.spotifyUrl } : undefined,
+      parsed.data.appleMusicUrl ? { expectedProvider: "apple-music" as const, url: parsed.data.appleMusicUrl } : undefined,
+      parsed.data.url ? { expectedProvider: undefined, url: parsed.data.url } : undefined,
+    ].filter((item): item is NonNullable<typeof item> => Boolean(item));
+    const resolvedVersions = await Promise.all(requestedVersions.map(async ({ expectedProvider, url }) => {
+      const resolved = await resolvePlaylist(url);
+      if (expectedProvider && resolved.provider !== expectedProvider) {
+        const providerName = expectedProvider === "spotify" ? "Spotify" : "Apple Music";
+        const article = expectedProvider === "spotify" ? "a" : "an";
+        throw new Error(`Use ${article} ${providerName} playlist URL in the ${providerName} field.`);
+      }
+      return resolved;
+    }));
+    const versions = resolvedVersions.filter((version, index) =>
+      resolvedVersions.findIndex((candidate) => candidate.provider === version.provider) === index
+    );
+    const primary = versions.find((version) => version.provider === "spotify") ?? versions[0];
+    if (!primary) throw new Error("Add a Spotify or Apple Music playlist URL");
+    const metadataSource = versions.find((version) => version.metadata.artworkUrl || version.metadata.providerTitle);
+    const metadata: PlaylistMetadata = metadataSource?.metadata ?? {};
     const timestamp = new Date().toISOString();
     const draft: PlaylistDraft = {
       id: createId("draft"), ownerId: profile.id, title: parsed.data.title, description, descriptionHtml,
-      provider: resolved.provider, providerPlaylistId: resolved.providerPlaylistId, canonicalUrl: resolved.canonicalUrl,
-      embedUrl: resolved.embedUrl,
+      provider: primary.provider, providerPlaylistId: primary.providerPlaylistId, canonicalUrl: primary.canonicalUrl,
+      embedUrl: primary.embedUrl,
+      versions: versions.map(({ provider, providerPlaylistId, canonicalUrl, embedUrl }) => ({
+        provider, providerPlaylistId, canonicalUrl, embedUrl,
+      })),
       metadata: { ...metadata, artworkUrl: parsed.data.artworkUrl ?? metadata.artworkUrl },
       createdAt: timestamp, updatedAt: timestamp,
     };
     await insertDraft(draft);
-    return NextResponse.json({ draft, warning: resolved.warning, demo: !integrations.mongo }, { status: 201 });
+    const warnings = resolvedVersions.flatMap((version) => version.warning ? [version.warning] : []);
+    return NextResponse.json({ draft, warning: warnings[0], demo: !integrations.mongo }, { status: 201 });
   } catch (error) {
     await discardArtwork(parsed.data.artworkUrl);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid playlist URL" }, { status: 400 });
