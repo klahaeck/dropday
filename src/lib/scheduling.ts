@@ -3,6 +3,11 @@ import type { RecurrenceConfig } from "@/types/domain";
 
 const weekdayTokens = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 
+export type AnchoredRecurrenceInput = Pick<
+  RecurrenceConfig,
+  "timezone" | "startsOn" | "localTime" | "frequency" | "interval" | "reminderOffsetsMinutes" | "version" | "paused"
+>;
+
 export function toRRule(config: Omit<RecurrenceConfig, "rrule">): string {
   const parts = [
     `FREQ=${config.frequency.toUpperCase()}`,
@@ -20,6 +25,20 @@ export function toRRule(config: Omit<RecurrenceConfig, "rrule">): string {
     );
   }
   return parts.join(";");
+}
+
+export function createAnchoredRecurrence(input: AnchoredRecurrenceInput): RecurrenceConfig {
+  const start = DateTime.fromISO(input.startsOn, { zone: input.timezone });
+  if (!start.isValid) throw new Error("Choose a valid start date and timezone.");
+
+  const baseSchedule = {
+    ...input,
+    weekdays: input.frequency === "weekly" ? [start.weekday] : undefined,
+    monthDays: input.frequency === "monthly" ? [start.day] : undefined,
+    ordinalWeekdays: undefined,
+  } satisfies Omit<RecurrenceConfig, "rrule">;
+
+  return { ...baseSchedule, rrule: toRRule(baseSchedule) };
 }
 
 function matchesOrdinalWeekday(

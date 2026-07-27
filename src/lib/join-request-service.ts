@@ -6,6 +6,7 @@ import {
   demoNotifications,
   demoUserById,
 } from "@/lib/demo-data";
+import { deliverBrowserNotification } from "@/lib/browser-push";
 import { featureAccessForPlan, getMembershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
 import { createId } from "@/lib/repository";
@@ -180,6 +181,7 @@ export async function decideJoinRequest({
   const db = await getDb();
   const client = await getMongoClient();
   let result: { request: JoinRequest; membership?: ClubMembership; demo: boolean } | undefined;
+  let browserNotification: Notification | undefined;
 
   await client.withSession(async (session) => session.withTransaction(async () => {
     const request = await db.collection<JoinRequest>("joinRequests").findOne({ id: requestId }, { session });
@@ -255,13 +257,12 @@ export async function decideJoinRequest({
     }
 
     const resolvedRequest: JoinRequest = { ...request, status: nextStatus, updatedAt: timestamp };
-    await db.collection<Notification>("notifications").insertOne(
-      decisionNotification(resolvedRequest, club, decision, timestamp),
-      { session },
-    );
+    browserNotification = decisionNotification(resolvedRequest, club, decision, timestamp);
+    await db.collection<Notification>("notifications").insertOne(browserNotification, { session });
     result = { request: resolvedRequest, membership, demo: false };
   }));
 
   if (!result) throw new JoinRequestDecisionError("Could not update this request.", 500);
+  if (browserNotification) await deliverBrowserNotification(browserNotification);
   return result;
 }

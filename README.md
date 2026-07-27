@@ -31,6 +31,7 @@ Copy `.env.example` to `.env.local` and configure:
 - `ABLY_API_KEY` and `NEXT_PUBLIC_ABLY_ENABLED=true`: authenticated club and drop channels.
 - `TRIGGER_SECRET_KEY` and `TRIGGER_PROJECT_ID`: delayed drop, reminder, outbox, and hourly custody tasks.
 - `RESEND_API_KEY` and `RESEND_FROM`: transactional delivery from a verified domain.
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`: native browser notifications for opted-in devices. Generate one persistent key pair with `npx web-push generate-vapid-keys`; use an HTTPS URL or `mailto:` address for the subject, and configure the same values for both the web deployment and Trigger.dev tasks.
 - `BLOB_READ_WRITE_TOKEN`: a public Vercel Blob store used for optional playlist cover images.
 
 Set `NEXT_PUBLIC_DEMO_MODE=false` after MongoDB and Clerk are configured.
@@ -117,4 +118,4 @@ Tasks live in `src/trigger/dropday-tasks.ts`. Delayed runs always re-check the M
 - `src/app/api`: entitlement-gated mutation, chat, token, and webhook endpoints.
 - `src/app/app`: all authenticated product routes.
 
-MongoDB is the source of truth. Ably transports realtime events, Trigger.dev runs durable work, and Resend sends email only after a persisted notification or outbox event exists.
+MongoDB is the source of truth. Ably transports realtime events, Trigger.dev runs durable work, and email or browser delivery happens only after a notification has been persisted.

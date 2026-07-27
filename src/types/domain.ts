@@ -11,6 +11,7 @@ export type ThemePreference = "system" | "light" | "dark";
 export type NotificationKind =
   | "invitation"
   | "membership"
+  | "mention"
   | "assignment"
   | "theme"
   | "reminder"
@@ -203,6 +204,7 @@ export interface ChatMessage {
   authorName: string;
   authorInitials: string;
   body: string;
+  mentionedUserIds?: Id[];
   reactions: ChatReaction[];
   deletedAt?: IsoDate;
   createdAt: IsoDate;
@@ -225,6 +227,20 @@ export interface Notification {
   href?: string;
   readAt?: IsoDate;
   createdAt: IsoDate;
+}
+
+export interface BrowserPushSubscription {
+  id: Id;
+  userId: Id;
+  endpoint: string;
+  expirationTime: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  userAgent?: string;
+  createdAt: IsoDate;
+  updatedAt: IsoDate;
 }
 
 export interface MembershipEntitlement {

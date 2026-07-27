@@ -41,6 +41,8 @@ export async function ensureIndexes() {
     db.collection("drops").createIndex({ clubId: 1, status: 1, scheduledFor: -1 }),
     db.collection("messages").createIndex({ threadType: 1, threadId: 1, createdAt: -1 }),
     db.collection("notifications").createIndex({ userId: 1, createdAt: -1 }),
+    db.collection("browserPushSubscriptions").createIndex({ endpoint: 1 }, { unique: true }),
+    db.collection("browserPushSubscriptions").createIndex({ userId: 1, updatedAt: -1 }),
     db.collection("outbox").createIndex({ idempotencyKey: 1 }, { unique: true }),
     db.collection("webhookReceipts").createIndex({ eventId: 1 }, { unique: true }),
     db.collection("rateLimits").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),

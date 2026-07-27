@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { getDb } from "@/lib/db";
+import { deliverBrowserNotifications } from "@/lib/browser-push";
+import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import {
   demoClubs,
@@ -138,9 +139,28 @@ export async function listMessages(threadType: "club" | "drop", threadId: string
   return messages;
 }
 
-export async function insertMessage(message: ChatMessage): Promise<void> {
-  if (!integrations.mongo) return;
-  await (await getDb()).collection<ChatMessage>("messages").insertOne(message);
+export async function insertMessage(
+  message: ChatMessage,
+  notifications: Notification[] = [],
+): Promise<void> {
+  if (!integrations.mongo) {
+    demoMessages.push(message);
+    demoNotifications.unshift(...notifications);
+    return;
+  }
+
+  const db = await getDb();
+  if (!notifications.length) {
+    await db.collection<ChatMessage>("messages").insertOne(message);
+    return;
+  }
+
+  const client = await getMongoClient();
+  await client.withSession(async (session) => session.withTransaction(async () => {
+    await db.collection<ChatMessage>("messages").insertOne(message, { session });
+    await db.collection<Notification>("notifications").insertMany(notifications, { session });
+  }));
+  await deliverBrowserNotifications(notifications);
 }
 
 export async function insertDraft(draft: PlaylistDraft): Promise<void> {

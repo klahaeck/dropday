@@ -1,47 +1,56 @@
 # Design QA
 
-- Source visual truth path: `/Users/khaeck/Desktop/Screenshot 2026-07-17 at 2.25.14 PM.png`
-- Requested target: replace the Prepared playlist dropdown with a modal selector, save a newly selected playlist immediately, and let the user exit without changing the current playlist.
-- Implementation screenshot path: unavailable; the in-app browser runtime failed during connection with `Cannot redefine property: process`.
-- Viewport: source image is 318 × 453; an equivalent implementation viewport could not be captured.
-- State: authenticated club overview, Next drop card; neither the closed selector nor open modal could be browser-captured.
+- Source visual truth path: `/Users/khaeck/Desktop/Screenshot 2026-07-27 at 1.53.23 PM.png`
+- Implementation screenshot path: `/Users/khaeck/.codex/visualizations/2026/07/27/019fa4e4-81af-7380-ab59-a10b67bd3dc1/dropday-chat-full.png`
+- Focused implementation crop: `/Users/khaeck/.codex/visualizations/2026/07/27/019fa4e4-81af-7380-ab59-a10b67bd3dc1/dropday-chat-current-message.png`
+- Side-by-side comparison: `/Users/khaeck/.codex/visualizations/2026/07/27/019fa4e4-81af-7380-ab59-a10b67bd3dc1/dropday-chat-reference-comparison.png`
+- Viewport: implementation 1280 × 720 CSS pixels at device scale 1.
+- Pixel dimensions: source 2024 × 678; implementation 1280 × 720; focused source crop 724 × 178; focused implementation crop 410 × 185.
+- Density normalization: no resampling was applied. The source is a full-width chat reference while Dropday renders chat in a 380-pixel desktop panel, so the comparison evaluates the outgoing-message layout pattern rather than absolute scale.
+- State: demo club chat after the current user sent “Testing the current user layout.”
 
 ## Full-view comparison evidence
 
-Blocked. The source image was opened, but browser-rendered implementation evidence is unavailable because the in-app browser could not initialize.
+The source screenshot and browser-rendered Dropday page were both opened and inspected. Dropday intentionally retains its existing product shell, type scale, color tokens, club accent, and reaction controls. The requested source pattern is present in the rendered chat: incoming messages retain identity on the left, while the current user’s message is right-aligned with only its timestamp above the bubble.
 
 ## Focused region comparison evidence
 
-Blocked for the same reason. Source-code inspection confirms that the Prepared playlist control is now a button and the modal renders a selectable list, but code inspection is not a visual comparison.
+The side-by-side comparison places the source outgoing message and the rendered Dropday outgoing message in the same image. Both show a timestamp above a right-aligned bubble with no visible current-user name or avatar. The focused view was sufficient because the request targets one message-row pattern rather than the surrounding application shell.
 
 ## Findings
 
-- [P1] Browser-rendered visual and interaction QA is unavailable.
-  - Location: Next drop playlist selector and modal.
-  - Evidence: the source image is available; no implementation screenshot could be captured.
-  - Impact: modal sizing, card rhythm, focus visibility, and interaction behavior could not be confirmed in the rendered app.
-  - Fix: reconnect the in-app browser, capture the closed selector at 318 × 453, open the modal, select a different playlist, and compare both states.
+No actionable P0, P1, or P2 differences remain for the requested layout.
+
+- Fonts and typography: Dropday’s existing typography is retained; the timestamp hierarchy and message legibility match the source pattern.
+- Spacing and layout rhythm: the current-user timestamp, bubble, and reaction row align to the right; the bubble has a capped width and readable internal alignment.
+- Colors and visual tokens: the established Dropday and club-accent colors are preserved intentionally rather than copying the reference app’s purple.
+- Image quality and asset fidelity: no new assets are required. The current-user avatar is intentionally absent, and incoming-user identity remains unchanged.
+- Copy and content: existing chat content and behaviors are preserved; only current-user identity presentation changed.
 
 ## Comparison history
 
-- Initial pass: blocked before an implementation screenshot could be captured. No P0/P1/P2 visual fixes were made from screenshot evidence.
+- Initial user evidence: the prior implementation showed the current user’s name and avatar, which conflicted with the selected reference.
+- Fix: conditionally removed the current user’s visible name and avatar, changed the outgoing row to a single right-aligned column, and capped the outgoing bubble width.
+- Post-fix evidence: the focused side-by-side comparison confirms the timestamp-only outgoing identity and right-aligned bubble.
 
 ## Primary interactions tested
 
-- Not browser-tested. Static inspection covers opening and closing the modal, immediate save on playlist selection, the keep-current path, Escape handling, backdrop dismissal, focus trapping, focus restoration, loading/error feedback, and body-scroll locking.
+- Entered and sent a message from the chat composer.
+- Confirmed the composer cleared after sending.
+- Confirmed the outgoing message rendered without a visible name or avatar.
+- Confirmed incoming messages retained their names and avatars.
 
 ## Console errors checked
 
-- Not checked because the browser runtime did not initialize.
+No browser console warnings or errors were reported in the verified state.
 
 ## Implementation checklist
 
-- [x] Replace the playlist dropdown with a selected-playlist button.
-- [x] Open an accessible modal containing the user’s prepared playlists.
-- [x] Save and display a newly selected playlist without a second confirmation button.
-- [x] Provide a Keep current playlist action and non-mutating dismissal paths.
-- [x] Support Escape, backdrop dismissal, focus trapping, and focus restoration.
-- [x] Add responsive modal styling for narrow viewports.
-- [ ] Capture and compare the rendered closed and open states.
+- [x] Remove the current user’s visible name.
+- [x] Remove the current user’s avatar.
+- [x] Keep the timestamp above the outgoing bubble.
+- [x] Align the outgoing bubble and reactions to the right.
+- [x] Preserve incoming-message identity and existing Dropday styling.
+- [x] Verify the send interaction and rendered state in a browser.
 
-final result: blocked
+final result: passed

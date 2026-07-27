@@ -9,10 +9,12 @@ import {
   sanitizeClubDescriptionHtml,
 } from "@/lib/club-description";
 import { CLUB_ACCENT_PATTERN } from "@/lib/club-accent";
-import { getDb } from "@/lib/db";
+import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
-import { getClubBySlug, getClubMemberships } from "@/lib/repository";
-import type { Club } from "@/types/domain";
+import { getClubBySlug, getClubMemberships, createId } from "@/lib/repository";
+import { createAnchoredRecurrence, nextOccurrences, occurrenceKey } from "@/lib/scheduling";
+import { scheduleDropTasks } from "@/lib/scheduler";
+import type { Club, DropSlot } from "@/types/domain";
 
 const imageValue = z.string().url().max(1_000).nullable().optional();
 const schema = z.object({
@@ -21,6 +23,11 @@ const schema = z.object({
   descriptionHtml: z.string().max(CLUB_DESCRIPTION_HTML_MAX_LENGTH).optional(),
   accent: z.string().regex(CLUB_ACCENT_PATTERN, "Choose a valid primary color.").transform((value) => value.toLowerCase()),
   clubImageUrl: imageValue,
+  startsOn: z.string().date(),
+  localTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  timezone: z.string().min(3).max(80),
+  frequency: z.enum(["daily", "weekly", "monthly"]),
+  interval: z.coerce.number().int().min(1).max(52),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -38,9 +45,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     return NextResponse.json({ error: `Keep the description to ${CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 });
   }
   const newArtwork = [parsed.data.clubImageUrl].filter((value): value is string => typeof value === "string");
-  if (!features.clubAdminTools) {
+  if (!features.clubAdminTools || !features.customSchedules) {
     await Promise.all(newArtwork.map(discardArtwork));
-    return NextResponse.json({ error: "Your current plan does not include club administration tools." }, { status: 403 });
+    return NextResponse.json({ error: "Your current plan does not include club administration and scheduling tools." }, { status: 403 });
   }
   if (parsed.data.clubImageUrl && !isOwnedArtworkUrl(parsed.data.clubImageUrl, "club", profile.id)) {
     return NextResponse.json({ error: "This club image does not belong to your account." }, { status: 403 });
@@ -62,7 +69,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   }
 
   const timestamp = new Date().toISOString();
-  const setValues: Record<string, string> = {
+  const schedule = createAnchoredRecurrence({
+    timezone: parsed.data.timezone,
+    startsOn: parsed.data.startsOn,
+    localTime: parsed.data.localTime,
+    frequency: parsed.data.frequency,
+    interval: parsed.data.interval,
+    reminderOffsetsMinutes: club.schedule.reminderOffsetsMinutes,
+    version: club.schedule.version + 1,
+    paused: club.schedule.paused,
+  });
+  const scheduleChanged = schedule.timezone !== club.schedule.timezone
+    || schedule.startsOn !== club.schedule.startsOn
+    || schedule.localTime !== club.schedule.localTime
+    || schedule.frequency !== club.schedule.frequency
+    || schedule.interval !== club.schedule.interval
+    || schedule.rrule !== club.schedule.rrule;
+  const setValues: Record<string, unknown> = {
     name: parsed.data.name,
     description,
     accent: parsed.data.accent,
@@ -76,15 +99,88 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     else setValues.imageUrl = parsed.data.clubImageUrl;
   }
 
+  let dropToSchedule: DropSlot | undefined;
   try {
-    const update = {
-      $set: setValues,
-      ...(Object.keys(unsetValues).length ? { $unset: unsetValues } : {}),
-    };
-    await (await getDb()).collection<Club>("clubs").updateOne({ id: club.id }, update);
+    const db = await getDb();
+    const client = await getMongoClient();
+    await client.withSession(async (session) => session.withTransaction(async () => {
+      if (scheduleChanged) {
+        const nextDate = nextOccurrences(schedule, new Date(Date.now() - 1000), 1)[0];
+        if (!nextDate) throw new Error("Could not find the next drop date.");
+
+        const activeDrop = club.activeDropId
+          ? await db.collection<DropSlot>("drops").findOne({ id: club.activeDropId }, { session })
+          : null;
+        const assignedUserId = activeDrop?.assignedUserId ?? club.rotationMemberIds[0];
+        if (!assignedUserId) throw new Error("This club has no active queue member.");
+
+        if (activeDrop && (activeDrop.status === "scheduled" || activeDrop.status === "overdue")) {
+          dropToSchedule = {
+            ...activeDrop,
+            occurrenceKey: occurrenceKey(club.id, nextDate, schedule.version),
+            scheduleVersion: schedule.version,
+            status: "scheduled",
+            scheduledFor: nextDate.toISOString(),
+            triggerRunIds: undefined,
+            updatedAt: timestamp,
+          };
+          await db.collection<DropSlot>("drops").updateOne(
+            { id: activeDrop.id },
+            {
+              $set: {
+                occurrenceKey: dropToSchedule.occurrenceKey,
+                scheduleVersion: dropToSchedule.scheduleVersion,
+                status: dropToSchedule.status,
+                scheduledFor: dropToSchedule.scheduledFor,
+                updatedAt: timestamp,
+              },
+              $unset: { triggerRunIds: "" },
+            },
+            { session },
+          );
+        } else {
+          dropToSchedule = {
+            id: createId("drop"),
+            clubId: club.id,
+            occurrenceKey: occurrenceKey(club.id, nextDate, schedule.version),
+            scheduleVersion: schedule.version,
+            status: "scheduled",
+            assignedUserId,
+            scheduledFor: nextDate.toISOString(),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          };
+          await db.collection<DropSlot>("drops").insertOne(dropToSchedule, { session });
+        }
+
+        setValues.schedule = schedule;
+        setValues.activeDropId = dropToSchedule.id;
+      }
+
+      const update = {
+        $set: setValues,
+        ...(Object.keys(unsetValues).length ? { $unset: unsetValues } : {}),
+      };
+      await db.collection<Club>("clubs").updateOne({ id: club.id }, update, { session });
+    }));
   } catch {
     await Promise.all(newArtwork.map(discardArtwork));
     return NextResponse.json({ error: "Could not update club settings." }, { status: 500 });
+  }
+
+  let schedulingWarning: string | undefined;
+  if (dropToSchedule) {
+    try {
+      const runIds = await scheduleDropTasks(dropToSchedule, schedule.reminderOffsetsMinutes);
+      if (runIds.length) {
+        await (await getDb()).collection<DropSlot>("drops").updateOne(
+          { id: dropToSchedule.id, scheduleVersion: dropToSchedule.scheduleVersion },
+          { $set: { triggerRunIds: runIds } },
+        );
+      }
+    } catch {
+      schedulingWarning = "The schedule was saved, but the next drop tasks still need to be scheduled.";
+    }
   }
 
   const replacedArtwork = [
@@ -97,5 +193,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     descriptionHtml,
     accent: parsed.data.accent,
     clubImageUrl: parsed.data.clubImageUrl,
+    schedule: scheduleChanged ? schedule : club.schedule,
+    warning: schedulingWarning,
   });
 }

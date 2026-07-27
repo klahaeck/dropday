@@ -14,6 +14,9 @@ export const env = {
   triggerProjectId: value("TRIGGER_PROJECT_ID"),
   resendApiKey: value("RESEND_API_KEY"),
   resendFrom: value("RESEND_FROM") ?? "Dropday <drops@example.com>",
+  vapidPublicKey: value("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
+  vapidPrivateKey: value("VAPID_PRIVATE_KEY"),
+  vapidSubject: value("VAPID_SUBJECT"),
 };
 
 export const integrations = {
@@ -22,4 +25,5 @@ export const integrations = {
   ably: Boolean(env.ablyApiKey && env.ablyEnabled),
   trigger: Boolean(env.triggerSecretKey),
   resend: Boolean(env.resendApiKey),
+  browserPush: Boolean(env.vapidPublicKey && env.vapidPrivateKey && env.vapidSubject),
 };

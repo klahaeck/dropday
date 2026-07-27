@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextOccurrences, toRRule } from "@/lib/scheduling";
+import { createAnchoredRecurrence, nextOccurrences, toRRule } from "@/lib/scheduling";
 import type { RecurrenceConfig } from "@/types/domain";
 
 const base: RecurrenceConfig = {
@@ -53,5 +53,26 @@ describe("recurrence scheduling", () => {
     const { rrule, ...config } = { ...base, weekdays: [2, 5] };
     expect(rrule).toBe(base.rrule);
     expect(toRRule(config)).toBe("FREQ=WEEKLY;INTERVAL=1;BYDAY=TU,FR");
+  });
+
+  it.each([
+    ["daily", "2026-07-29", "FREQ=DAILY;INTERVAL=3"],
+    ["weekly", "2026-07-29", "FREQ=WEEKLY;INTERVAL=3;BYDAY=WE"],
+    ["monthly", "2026-07-29", "FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=29"],
+  ] as const)("anchors an every-three-%s ritual to its start date", (frequency, startsOn, rrule) => {
+    const schedule = createAnchoredRecurrence({
+      timezone: "America/Chicago",
+      startsOn,
+      localTime: "18:30",
+      frequency,
+      interval: 3,
+      reminderOffsetsMinutes: [1440, 60],
+      version: 2,
+      paused: false,
+    });
+
+    expect(schedule.rrule).toBe(rrule);
+    expect(schedule.weekdays).toEqual(frequency === "weekly" ? [3] : undefined);
+    expect(schedule.monthDays).toEqual(frequency === "monthly" ? [29] : undefined);
   });
 });

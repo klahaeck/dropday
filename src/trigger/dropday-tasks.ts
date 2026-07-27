@@ -1,6 +1,7 @@
 import { Rest } from "ably";
 import { schedules, task } from "@trigger.dev/sdk";
 import { archiveExpiredCustodyClubs } from "@/lib/billing-service";
+import { deliverBrowserNotification } from "@/lib/browser-push";
 import { getDb } from "@/lib/db";
 import { sendDropdayEmail } from "@/lib/email";
 import { env, integrations } from "@/lib/env";
@@ -40,7 +41,9 @@ export const sendDropReminderTask = task({
       body: `${payload.offsetMinutes >= 1440 ? `${payload.offsetMinutes / 1440} day` : `${payload.offsetMinutes / 60} hour`} reminder for ${club.currentTheme?.name ?? "your freeform drop"}.`,
       href: `/app/clubs/${club.slug}`, createdAt: new Date().toISOString(),
     };
-    await db.collection<Notification>("notifications").updateOne({ id }, { $setOnInsert: notification }, { upsert: true });
+    const notificationInsert = await db.collection<Notification>("notifications")
+      .updateOne({ id }, { $setOnInsert: notification }, { upsert: true });
+    if (notificationInsert.upsertedCount === 1) await deliverBrowserNotification(notification);
     if (user.primaryEmail && user.emailNotifications) await sendDropdayEmail({
       to: user.primaryEmail, subject: notification.title, heading: "You’re almost up.", body: notification.body,
       href: notification.href, idempotencyKey: id,
@@ -77,6 +80,7 @@ export const dispatchOutboxTask = task({
         title, body, href: `/app/clubs/${club.slug}`, createdAt: new Date().toISOString(),
       };
       await db.collection<Notification>("notifications").insertOne(notification);
+      await deliverBrowserNotification(notification);
       if (user.primaryEmail && user.emailNotifications) await sendDropdayEmail({
         to: user.primaryEmail, subject: title, heading: event.type === "drop.overdue" ? "The queue is waiting." : "Needle down.",
         body, href: notification.href, idempotencyKey: `${event.idempotencyKey}:${user.id}`,

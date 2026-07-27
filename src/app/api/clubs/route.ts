@@ -12,19 +12,19 @@ import { CLUB_ACCENT_PATTERN, DEFAULT_CLUB_ACCENT } from "@/lib/club-accent";
 import { getDb, getMongoClient } from "@/lib/db";
 import { getOwnershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
-import { nextOccurrences, occurrenceKey, toRRule } from "@/lib/scheduling";
+import { createAnchoredRecurrence, nextOccurrences, occurrenceKey } from "@/lib/scheduling";
 import { countOwnedClubs, createId } from "@/lib/repository";
 import { scheduleDropTasks } from "@/lib/scheduler";
 import { THEME_DESCRIPTION_MAX_LENGTH } from "@/lib/theme-description";
-import type { Club, ClubMembership, DropSlot, RecurrenceConfig } from "@/types/domain";
+import type { Club, ClubMembership, DropSlot } from "@/types/domain";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(70), description: z.string().trim().min(10).max(CLUB_DESCRIPTION_MAX_LENGTH),
   descriptionHtml: z.string().max(CLUB_DESCRIPTION_HTML_MAX_LENGTH).optional(),
   accent: z.string().regex(CLUB_ACCENT_PATTERN, "Choose a valid primary color.").transform((value) => value.toLowerCase()).default(DEFAULT_CLUB_ACCENT),
-  visibility: z.enum(["public", "private"]), startsOn: z.string().date(), localTime: z.string().regex(/^\d{2}:\d{2}$/),
+  visibility: z.enum(["public", "private"]), startsOn: z.string().date(), localTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   timezone: z.string().min(3).max(80), frequency: z.enum(["daily", "weekly", "monthly"]),
-  interval: z.coerce.number().int().min(1).max(52), weekdays: z.string().optional(), theme: z.string().trim().min(2).max(100).optional(),
+  interval: z.coerce.number().int().min(1).max(52), theme: z.string().trim().min(2).max(100).optional(),
   guidance: z.string().trim().max(THEME_DESCRIPTION_MAX_LENGTH).optional(),
   clubImageUrl: z.string().url().max(1_000).optional(), themeImageUrl: z.string().url().max(1_000).optional(),
 });
@@ -80,15 +80,11 @@ export async function POST(request: Request) {
   const client = await getMongoClient();
   const timestamp = new Date().toISOString();
   const id = createId("club");
-  const weekdays = parsed.data.weekdays?.split(",").map(Number).filter((day) => day >= 1 && day <= 7);
-  const baseSchedule = {
+  const schedule = createAnchoredRecurrence({
     timezone: parsed.data.timezone, startsOn: parsed.data.startsOn, localTime: parsed.data.localTime,
     frequency: parsed.data.frequency, interval: parsed.data.interval,
-    weekdays: parsed.data.frequency === "weekly" ? weekdays?.length ? weekdays : [2] : undefined,
-    monthDays: parsed.data.frequency === "monthly" ? [Number(parsed.data.startsOn.slice(-2))] : undefined,
-    ordinalWeekdays: undefined, reminderOffsetsMinutes: [1440, 60], version: 1, paused: false,
-  } satisfies Omit<RecurrenceConfig, "rrule">;
-  const schedule: RecurrenceConfig = { ...baseSchedule, rrule: toRRule(baseSchedule) };
+    reminderOffsetsMinutes: [1440, 60], version: 1, paused: false,
+  });
   const requestedSlug = slugify(parsed.data.name) || id.slice(-8);
   const exists = await db.collection<Club>("clubs").findOne({ slug: requestedSlug }, { projection: { id: 1 } });
   const slug = exists ? `${requestedSlug}-${id.slice(-5)}` : requestedSlug;

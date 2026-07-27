@@ -17,9 +17,16 @@ import {
   THEME_DESCRIPTION_MAX_LENGTH,
   sanitizeThemeDescriptionHtml,
 } from "@/lib/theme-description";
-import type { ClubTheme, PlaylistDraft } from "@/types/domain";
+import type { ClubTheme, PlaylistDraft, RecurrenceConfig } from "@/types/domain";
 
 const ARTWORK_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const RITUAL_TIMEZONES = [
+  "America/Chicago",
+  "America/New_York",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/London",
+];
 
 async function prepareArtwork(file: File): Promise<File> {
   if (!ARTWORK_TYPES.has(file.type)) throw new Error("Choose a JPEG, PNG, or WebP image.");
@@ -81,6 +88,102 @@ async function discardUploadedArtwork(urls: string[]) {
       body: JSON.stringify({ urls }),
     });
   } catch {}
+}
+
+function ritualStartLabel(startsOn: string, localTime: string) {
+  const [year, month, day] = startsOn.split("-").map(Number);
+  const [hour, minute] = localTime.split(":").map(Number);
+  if (!year || !month || !day || Number.isNaN(hour) || Number.isNaN(minute)) return;
+
+  const date = new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+  const period = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${date} at ${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+function RitualFields({
+  idPrefix,
+  schedule,
+  kicker = "02 · Drop day",
+}: {
+  idPrefix: string;
+  schedule?: Pick<RecurrenceConfig, "startsOn" | "localTime" | "timezone" | "frequency" | "interval">;
+  kicker?: string;
+}) {
+  const [startsOn, setStartsOn] = useState(schedule?.startsOn ?? "");
+  const [localTime, setLocalTime] = useState(schedule?.localTime ?? "09:00");
+  const [timezone, setTimezone] = useState(schedule?.timezone ?? "America/Chicago");
+  const [frequency, setFrequency] = useState<RecurrenceConfig["frequency"]>(schedule?.frequency ?? "weekly");
+  const [interval, setInterval] = useState(String(schedule?.interval ?? 1));
+  const intervalNumber = Number(interval);
+  const startLabel = ritualStartLabel(startsOn, localTime);
+  const unit = frequency === "daily" ? "day" : frequency === "weekly" ? "week" : "month";
+  const cadence = intervalNumber === 1 ? `Every ${unit}` : `Every ${interval || "N"} ${unit}s`;
+  const summary = startLabel
+    ? `${cadence}, beginning ${startLabel} in ${timezone}.`
+    : "Choose a start date to anchor the first drop and every drop after it.";
+  const timezoneOptions = RITUAL_TIMEZONES.includes(timezone)
+    ? RITUAL_TIMEZONES
+    : [timezone, ...RITUAL_TIMEZONES];
+
+  return <section className="form-section">
+    <span className="section-kicker">{kicker}</span>
+    <h2>Set the ritual</h2>
+    <p>Choose the first drop, then choose how often it repeats.</p>
+    <div className="form-grid">
+      <div className="field">
+        <label htmlFor={`${idPrefix}-starts-on`}>Start date</label>
+        <input id={`${idPrefix}-starts-on`} name="startsOn" type="date" required value={startsOn} onChange={(event) => setStartsOn(event.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor={`${idPrefix}-local-time`}>Start time</label>
+        <input id={`${idPrefix}-local-time`} name="localTime" type="time" required value={localTime} onChange={(event) => setLocalTime(event.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor={`${idPrefix}-timezone`}>Timezone</label>
+        <select id={`${idPrefix}-timezone`} name="timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+          {timezoneOptions.map((option) => <option key={option}>{option}</option>)}
+        </select>
+      </div>
+      <div className="field ritual-repeat-field">
+        <label htmlFor={`${idPrefix}-interval`} id={`${idPrefix}-repeat-label`}>Repeat</label>
+        <div className="ritual-repeat-row" role="group" aria-labelledby={`${idPrefix}-repeat-label`}>
+          <span>Every</span>
+          <input
+            id={`${idPrefix}-interval`}
+            name="interval"
+            type="number"
+            min="1"
+            max="52"
+            required
+            aria-label="Repeat interval"
+            aria-describedby={`${idPrefix}-summary`}
+            value={interval}
+            onChange={(event) => setInterval(event.target.value)}
+          />
+          <select
+            id={`${idPrefix}-frequency`}
+            name="frequency"
+            aria-label="Repeat unit"
+            aria-describedby={`${idPrefix}-summary`}
+            value={frequency}
+            onChange={(event) => setFrequency(event.target.value as RecurrenceConfig["frequency"])}
+          >
+            <option value="daily">{intervalNumber === 1 ? "day" : "days"}</option>
+            <option value="weekly">{intervalNumber === 1 ? "week" : "weeks"}</option>
+            <option value="monthly">{intervalNumber === 1 ? "month" : "months"}</option>
+          </select>
+        </div>
+      </div>
+      <p id={`${idPrefix}-summary`} className="ritual-summary field-full" aria-live="polite">{summary}</p>
+    </div>
+  </section>;
 }
 
 function ArtworkPicker({
@@ -445,7 +548,7 @@ export function CreateClubForm({ canOwn, ownerId }: { canOwn: boolean; ownerId: 
   if (!canOwn) return <div className="empty-state"><h2>A paid plan is required to own a club.</h2><p>Free members can join three clubs but may never own one. Choose any paid tier to start hosting.</p><a href="/pricing" className="button button-dark">See paid plans</a></div>;
   return <form className="form-shell" onSubmit={submit}>
     <section className="form-section"><span className="section-kicker">01 · Identity</span><h2>Name the room</h2><div className="form-grid"><div className="field"><label htmlFor="name">Club name</label><input id="name" name="name" required minLength={2} maxLength={70} placeholder="Needle Exchange" value={clubName} onChange={(event) => setClubName(event.target.value)} /></div><div className="field"><label htmlFor="visibility">Visibility</label><select id="visibility" name="visibility"><option value="public">Public · discoverable</option><option value="private">Private · link or invite only</option></select></div><div className="field field-full"><label id="description-label">Description</label><div className="rich-text-shell"><div className="rich-text-toolbar" role="toolbar" aria-label="Description formatting"><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatClubDescription("bold")}><Bold size={16} /></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => formatClubDescription("italic")}><Italic size={16} /></button><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatClubDescription("insertUnorderedList")}><List size={16} /></button></div><div ref={clubDescriptionEditorRef} id="description" className="rich-text-editor rich-text-editor-compact" contentEditable role="textbox" aria-labelledby="description-label" aria-multiline="true" aria-required="true" data-placeholder="What kind of listening club is this?" onInput={updateClubDescription} onPaste={pasteClubDescription} suppressContentEditableWarning /></div><input type="hidden" name="description" value={clubDescriptionText} /><input type="hidden" name="descriptionHtml" value={clubDescriptionHtml} /><span className={`field-counter${clubDescriptionText.length > CLUB_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{clubDescriptionText.length.toLocaleString()}/{CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><div className="field field-full"><label htmlFor="accent">Primary color</label><div className="color-field"><input id="accent" name="accent" type="color" value={clubAccent} onChange={(event) => setClubAccent(event.target.value)} /><span>{clubAccent.toUpperCase()}</span></div><small>Used as the background color on the club detail page.</small></div><ArtworkPicker id="club-image" label="Club image" initials={clubName.trim().slice(0, 1).toUpperCase() || "D"} onChange={setClubArtwork} onBusyChange={imageBusy} /></div></section>
-    <section className="form-section"><span className="section-kicker">02 · Drop day</span><h2>Set the ritual</h2><div className="form-grid"><div className="field"><label htmlFor="startsOn">Start date</label><input id="startsOn" name="startsOn" type="date" required /></div><div className="field"><label htmlFor="localTime">Local time</label><input id="localTime" name="localTime" type="time" required defaultValue="09:00" /></div><div className="field"><label htmlFor="timezone">Timezone</label><select id="timezone" name="timezone" defaultValue="America/Chicago"><option>America/Chicago</option><option>America/New_York</option><option>America/Denver</option><option>America/Los_Angeles</option><option>Europe/London</option></select></div><div className="field"><label htmlFor="frequency">Frequency</label><select id="frequency" name="frequency"><option value="weekly">Weekly</option><option value="daily">Daily</option><option value="monthly">Monthly</option></select></div><div className="field"><label htmlFor="interval">Every</label><input id="interval" name="interval" type="number" min="1" max="52" defaultValue="1" /></div><div className="field"><label htmlFor="weekdays">Weekdays</label><input id="weekdays" name="weekdays" placeholder="2 (Tuesday), or 2,5" defaultValue="2" /></div></div></section>
+    <RitualFields idPrefix="new-club-ritual" />
     <section className="form-section"><span className="section-kicker">03 · Listening format</span><h2>Theme or freeform</h2><label className="theme-current-toggle"><input type="checkbox" checked={useTheme} onChange={(event) => setUseTheme(event.target.checked)} /><span><strong>Start this club with a theme</strong><small>Leave this unchecked for a freeform club. You can add themes later.</small></span></label>{useTheme && <div className="form-grid theme-fields-grid optional-theme-fields"><div className="field"><label htmlFor="theme">Theme</label><input id="theme" name="theme" required minLength={2} maxLength={100} placeholder="Heatwave at midnight" value={themeName} onChange={(event) => setThemeName(event.target.value)} /></div><div className="field"><label htmlFor="guidance">Guidance</label><textarea id="guidance" name="guidance" maxLength={THEME_DESCRIPTION_MAX_LENGTH} placeholder="Songs that feel like…" /></div><ArtworkPicker id="theme-image" label="Theme image" initials={themeName.trim().slice(0, 2).toUpperCase() || "TH"} onChange={setThemeArtwork} onBusyChange={imageBusy} /></div>}</section>
     {message && <p className="form-note form-error" role="alert">{message}</p>}<div className="form-actions"><span className="form-note">{uploadStatus ?? "The creator becomes the first queue member."}</span><button className="button button-dark" disabled={loading || preparingImages > 0}><SubmitState loading={loading} success={false} idle="Create club" /></button></div>
   </form>;
@@ -596,8 +699,7 @@ export function ClubSettingsForm({
   ownerId,
   clubImageUrl,
   clubAccent,
-  localTime,
-  timezone,
+  schedule,
 }: {
   clubSlug: string;
   clubName: string;
@@ -606,8 +708,7 @@ export function ClubSettingsForm({
   ownerId: string;
   clubImageUrl?: string;
   clubAccent: string;
-  localTime: string;
-  timezone: string;
+  schedule: RecurrenceConfig;
 }) {
   const initialDescriptionHtml = clubDescriptionHtml
     ? sanitizeClubDescriptionHtml(clubDescriptionHtml)
@@ -615,6 +716,7 @@ export function ClubSettingsForm({
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>();
+  const [notice, setNotice] = useState<string>();
   const [name, setName] = useState(clubName);
   const [descriptionHtml, setDescriptionHtml] = useState(initialDescriptionHtml);
   const [descriptionText, setDescriptionText] = useState(clubDescription);
@@ -647,7 +749,7 @@ export function ClubSettingsForm({
     document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
   }
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedDescription = descriptionText.trim();
     if (normalizedDescription.length < 10) {
@@ -668,6 +770,8 @@ export function ClubSettingsForm({
     setLoading(true);
     setSaved(false);
     setMessage(undefined);
+    setNotice(undefined);
+    const form = new FormData(event.currentTarget);
     const uploadedUrls: string[] = [];
     let submissionStarted = false;
     try {
@@ -688,9 +792,10 @@ export function ClubSettingsForm({
           descriptionHtml,
           accent,
           clubImageUrl: nextClubImageUrl,
+          ...Object.fromEntries(form.entries()),
         }),
       });
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { error?: string; warning?: string };
       if (!response.ok) {
         await discardUploadedArtwork(uploadedUrls);
         setLoading(false);
@@ -700,6 +805,7 @@ export function ClubSettingsForm({
       setClubArtwork(undefined);
       setLoading(false);
       setSaved(true);
+      setNotice(result.warning);
       router.refresh();
       setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -712,7 +818,9 @@ export function ClubSettingsForm({
 
   return <form className="form-shell" onSubmit={submit}>
     <section className="form-section"><span className="section-kicker">Club identity</span><h2>Club details</h2><div className="form-grid"><div className="field field-full"><label htmlFor="settings-club-name">Club title</label><input id="settings-club-name" required minLength={2} maxLength={70} value={name} onChange={(event) => setName(event.target.value)} /></div><div className="field field-full"><label id="settings-club-description-label">Description</label><div className="rich-text-shell"><div className="rich-text-toolbar" role="toolbar" aria-label="Description formatting"><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("bold")}><Bold size={16} /></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("italic")}><Italic size={16} /></button><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("insertUnorderedList")}><List size={16} /></button></div><div ref={descriptionEditorRef} id="settings-club-description" className="rich-text-editor rich-text-editor-compact" contentEditable role="textbox" aria-labelledby="settings-club-description-label" aria-multiline="true" aria-required="true" data-placeholder="What kind of listening club is this?" onInput={updateDescription} onPaste={pasteDescription} suppressContentEditableWarning dangerouslySetInnerHTML={{ __html: initialDescriptionHtml }} /></div><span className={`field-counter${descriptionText.length > CLUB_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{descriptionText.length.toLocaleString()}/{CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><div className="field field-full"><label htmlFor="settings-club-accent">Primary color</label><div className="color-field"><input id="settings-club-accent" type="color" value={accent} onChange={(event) => setAccent(event.target.value)} /><span>{accent.toUpperCase()}</span></div><small>Used as the background color on the club detail page.</small></div><ArtworkPicker id="settings-club-image" label="Club image" initials={name.trim().slice(0, 1).toUpperCase() || "D"} existingUrl={clubImageUrl} onChange={setClubArtwork} onBusyChange={imageBusy} /></div></section>
-    <section className="form-section"><span className="section-kicker">Schedule</span><h2>Drop timing</h2><div className="form-grid"><div className="field"><label htmlFor="settings-time">Time</label><input id="settings-time" type="time" defaultValue={localTime} /></div><div className="field"><label htmlFor="settings-zone">Timezone</label><input id="settings-zone" defaultValue={timezone} /></div><div className="field field-full"><label htmlFor="settings-reminders">Reminder offsets (minutes)</label><input id="settings-reminders" defaultValue="1440, 60" /></div></div></section>
-    {message && <p className="form-note form-error" role="alert">{message}</p>}<div className="form-actions"><span className="form-note">{uploadStatus}</span><button className="button button-dark" disabled={loading || preparingImages > 0}><SubmitState loading={loading} success={saved} idle="Save settings" /></button></div>
+    <RitualFields idPrefix="club-settings-ritual" schedule={schedule} kicker="Schedule" />
+    {message && <p className="form-note form-error" role="alert">{message}</p>}
+    {notice && <p className="form-note" role="status">{notice}</p>}
+    <div className="form-actions"><span className="form-note">{uploadStatus}</span><button className="button button-dark" disabled={loading || preparingImages > 0}><SubmitState loading={loading} success={saved} idle="Save settings" /></button></div>
   </form>;
 }
