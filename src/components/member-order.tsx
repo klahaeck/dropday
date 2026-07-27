@@ -5,13 +5,18 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
+import type { Announcements } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { GripVertical } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import { moveMember } from "@/lib/queue";
+import {
+  Sortable,
+  SortableContent,
+  SortableItem,
+  SortableItemHandle,
+  SortableOverlay,
+} from "@/components/ui/sortable";
 import type { UserProfile } from "@/types/domain";
 
 type MemberSummary = Pick<UserProfile, "id" | "displayName" | "initials" | "imageUrl"> & {
@@ -41,11 +46,7 @@ export function MemberOrder({
   const [savingMemberId, setSavingMemberId] = useState<string>();
   const [feedback, setFeedback] = useState<Feedback>({ kind: "idle", message: "" });
   const memberIdsRef = useRef(initialMemberIds);
-  const savedMemberIdsRef = useRef(initialMemberIds);
   const pausedMemberIdsRef = useRef(new Set(pausedMemberIds));
-  const dragStartOrderRef = useRef(initialMemberIds);
-  const draggingMemberIdRef = useRef<string | undefined>(undefined);
-  const lastDragTargetRef = useRef<string | undefined>(undefined);
   const savingRef = useRef(false);
   const savedFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const router = useRouter();
@@ -82,7 +83,6 @@ export function MemberOrder({
       if (!response.ok) {
         const restoredMemberIds = result.memberIds ?? rollbackMemberIds;
         updateOrder(restoredMemberIds);
-        savedMemberIdsRef.current = restoredMemberIds;
         setFeedback({ kind: "error", message: result.error ?? "Could not save the member order." });
         if (response.status === 409) router.refresh();
         return;
@@ -90,7 +90,6 @@ export function MemberOrder({
 
       const savedMemberIds = result.memberIds ?? nextMemberIds;
       updateOrder(savedMemberIds);
-      savedMemberIdsRef.current = savedMemberIds;
       setFeedback({ kind: "saved", message: "Member order saved." });
       savedFeedbackTimeoutRef.current = setTimeout(
         () => setFeedback({ kind: "idle", message: "" }),
@@ -137,7 +136,6 @@ export function MemberOrder({
         const restoredMemberIds = result.memberIds ?? previousMemberIds;
         const restoredPaused = result.paused ?? wasPaused;
         updateOrder(restoredMemberIds);
-        savedMemberIdsRef.current = restoredMemberIds;
         updatePausedState(memberId, restoredPaused);
         setFeedback({ kind: "error", message: result.error ?? "Could not update this member's queue state." });
         if (response.status === 409) router.refresh();
@@ -147,7 +145,6 @@ export function MemberOrder({
       const savedMemberIds = result.memberIds ?? previousMemberIds;
       const savedPaused = result.paused ?? paused;
       updateOrder(savedMemberIds);
-      savedMemberIdsRef.current = savedMemberIds;
       updatePausedState(memberId, savedPaused);
       setFeedback({
         kind: "saved",
@@ -170,122 +167,168 @@ export function MemberOrder({
     }
   }
 
-  function beginPointerDrag(event: ReactPointerEvent<HTMLButtonElement>, memberId: string) {
-    if (savingRef.current || memberIdsRef.current.length < 2 || (event.pointerType === "mouse" && event.button !== 0)) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragStartOrderRef.current = memberIdsRef.current;
-    draggingMemberIdRef.current = memberId;
-    lastDragTargetRef.current = memberId;
-    setDraggingMemberId(memberId);
-    setFeedback({ kind: "idle", message: `Moving ${membersById.get(memberId)?.displayName ?? "member"}.` });
-  }
-
-  function continuePointerDrag(event: ReactPointerEvent<HTMLButtonElement>) {
-    const memberId = draggingMemberIdRef.current;
-    if (!memberId) return;
-    event.preventDefault();
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-member-id]");
-    const targetMemberId = target?.dataset.memberId;
-    if (!targetMemberId || targetMemberId === memberId || targetMemberId === lastDragTargetRef.current) return;
-    lastDragTargetRef.current = targetMemberId;
-
-    const nextMemberIds = moveMember(memberIdsRef.current, memberId, targetMemberId);
-    if (!ordersMatch(memberIdsRef.current, nextMemberIds)) updateOrder(nextMemberIds);
-  }
-
-  function endPointerDrag(event: ReactPointerEvent<HTMLButtonElement>) {
-    const memberId = draggingMemberIdRef.current;
-    if (!memberId) return;
-    event.preventDefault();
-    draggingMemberIdRef.current = undefined;
-    lastDragTargetRef.current = undefined;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDraggingMemberId(undefined);
-
-    const nextMemberIds = memberIdsRef.current;
-    const previousMemberIds = dragStartOrderRef.current;
-    if (ordersMatch(nextMemberIds, previousMemberIds)) {
+  function reorderMembers(nextMemberIds: string[]) {
+    if (savingRef.current) return;
+    const previousMemberIds = memberIdsRef.current;
+    if (ordersMatch(previousMemberIds, nextMemberIds)) {
       setFeedback({ kind: "idle", message: "" });
       return;
     }
-    void persistOrder(nextMemberIds, previousMemberIds);
-  }
-
-  function cancelPointerDrag() {
-    if (!draggingMemberIdRef.current) return;
-    updateOrder(dragStartOrderRef.current);
-    draggingMemberIdRef.current = undefined;
-    lastDragTargetRef.current = undefined;
-    setDraggingMemberId(undefined);
-    setFeedback({ kind: "idle", message: "Member move cancelled." });
-  }
-
-  function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, memberId: string) {
-    if (savingRef.current || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
-    event.preventDefault();
-    const currentIndex = memberIdsRef.current.indexOf(memberId);
-    const targetIndex = currentIndex + (event.key === "ArrowUp" ? -1 : 1);
-    const targetMemberId = memberIdsRef.current[targetIndex];
-    if (!targetMemberId) return;
-
-    const previousMemberIds = savedMemberIdsRef.current;
-    const nextMemberIds = moveMember(memberIdsRef.current, memberId, targetMemberId);
     updateOrder(nextMemberIds);
     void persistOrder(nextMemberIds, previousMemberIds);
   }
 
+  const announcements = useMemo<Announcements>(() => ({
+    onDragStart({ active }) {
+      const memberId = String(active.id);
+      const displayName = membersById.get(memberId)?.displayName ?? "Member";
+      const index = memberIdsRef.current.indexOf(memberId);
+      return `Picked up ${displayName}. Position ${index + 1} of ${memberIdsRef.current.length}. Use the up and down arrow keys to move, then press space or enter to drop.`;
+    },
+    onDragOver({ active, over }) {
+      const displayName = membersById.get(String(active.id))?.displayName ?? "Member";
+      if (!over) return `${displayName} is outside the queue. Press escape to cancel.`;
+      const overIndex = over.data.current?.sortable.index ?? 0;
+      return `${displayName} moved to position ${overIndex + 1} of ${memberIdsRef.current.length}.`;
+    },
+    onDragEnd({ active, over }) {
+      const displayName = membersById.get(String(active.id))?.displayName ?? "Member";
+      if (!over) return `${displayName} was dropped outside the queue. No changes were made.`;
+      const overIndex = over.data.current?.sortable.index ?? 0;
+      return `${displayName} was dropped at position ${overIndex + 1} of ${memberIdsRef.current.length}.`;
+    },
+    onDragCancel({ active }) {
+      const memberId = String(active.id);
+      const displayName = membersById.get(memberId)?.displayName ?? "Member";
+      const index = memberIdsRef.current.indexOf(memberId);
+      return `Sorting cancelled. ${displayName} returned to position ${index + 1}.`;
+    },
+  }), [membersById]);
+
   const activeMemberIds = new Set(memberIds);
   const pausedMemberIdSet = new Set(pausedMemberIds);
   const nextActiveMemberId = memberIds.find((memberId) => !pausedMemberIdSet.has(memberId));
-  const displayedMemberIds = [
-    ...memberIds,
-    ...members.filter((member) => !activeMemberIds.has(member.id)).map((member) => member.id),
-  ];
+  const outsideQueueMemberIds = members
+    .filter((member) => !activeMemberIds.has(member.id))
+    .map((member) => member.id);
 
   return (
     <div className="member-order">
       <p className="member-order-help" id="member-order-help">
-        Drag the handles to reorder the queue, or use the arrow keys on a focused handle. Paused members keep their position and are skipped for future turns.
+        Drag a handle to reorder the queue. For keyboard sorting, focus a handle, press Space or Enter, move with the arrow keys, then press Space or Enter to drop. Paused members keep their position and are skipped for future turns.
       </p>
       <div className="member-order-list">
-        {displayedMemberIds.map((memberId) => {
+        <Sortable
+          value={memberIds}
+          onValueChange={reorderMembers}
+          accessibility={{ announcements }}
+          onDragStart={({ active }) => {
+            const memberId = String(active.id);
+            setDraggingMemberId(memberId);
+            setFeedback({
+              kind: "idle",
+              message: `Moving ${membersById.get(memberId)?.displayName ?? "member"}.`,
+            });
+          }}
+          onDragEnd={() => {
+            setDraggingMemberId(undefined);
+            setFeedback({ kind: "idle", message: "" });
+          }}
+          onDragCancel={() => {
+            setDraggingMemberId(undefined);
+            setFeedback({ kind: "idle", message: "Member move cancelled." });
+          }}
+        >
+          <SortableContent className="member-order-sortable-content">
+            {memberIds.map((memberId) => {
+              const member = membersById.get(memberId);
+              const displayName = member?.displayName ?? "Dropday member";
+              const index = memberIds.indexOf(memberId);
+              const paused = pausedMemberIdSet.has(memberId);
+              const changing = savingMemberId === memberId;
+              return (
+                <SortableItem
+                  className={`member-row member-order-row${draggingMemberId === memberId ? " member-order-row-dragging" : ""}${paused ? " member-order-row-paused" : ""}`}
+                  disabled={saving || memberIds.length < 2}
+                  key={memberId}
+                  value={memberId}
+                >
+                  <SortableItemHandle
+                    className="member-order-handle"
+                    aria-describedby="member-order-help"
+                    aria-label={`Reorder ${displayName}. Position ${index + 1} of ${memberIds.length}.`}
+                    aria-keyshortcuts="Space Enter ArrowUp ArrowDown Escape"
+                  >
+                    <GripVertical size={16} aria-hidden="true" />
+                  </SortableItemHandle>
+                  <Avatar user={member} />
+                  <div>
+                    <strong>{displayName}</strong>
+                    <small>{paused ? `Position ${index + 1} · Paused` : memberId === nextActiveMemberId ? "Next" : `Position ${index + 1}`}</small>
+                  </div>
+                  <button
+                    className={`button button-ghost button-small member-queue-toggle${paused ? " member-queue-toggle-paused" : ""}`}
+                    type="button"
+                    aria-label={paused ? `Resume ${displayName} in the queue` : `Pause ${displayName} in the queue`}
+                    aria-pressed={paused}
+                    disabled={saving}
+                    title={paused ? "Resume in the same queue position" : "Pause future turns"}
+                    onClick={() => void togglePaused(memberId, displayName)}
+                  >
+                    {changing ? "Saving…" : paused ? "Paused" : "Pause"}
+                  </button>
+                </SortableItem>
+              );
+            })}
+          </SortableContent>
+          <SortableOverlay>
+            {({ value }) => {
+              const memberId = String(value);
+              const member = membersById.get(memberId);
+              const displayName = member?.displayName ?? "Dropday member";
+              const index = memberIds.indexOf(memberId);
+              const paused = pausedMemberIdSet.has(memberId);
+              return (
+                <SortableItem
+                  className={`member-row member-order-row member-order-row-overlay${paused ? " member-order-row-paused" : ""}`}
+                  value={memberId}
+                >
+                  <span className="member-order-handle" aria-hidden="true">
+                    <GripVertical size={16} />
+                  </span>
+                  <Avatar user={member} />
+                  <div>
+                    <strong>{displayName}</strong>
+                    <small>{paused ? `Position ${index + 1} · Paused` : memberId === nextActiveMemberId ? "Next" : `Position ${index + 1}`}</small>
+                  </div>
+                  <span
+                    className={`button button-ghost button-small member-queue-toggle${paused ? " member-queue-toggle-paused" : ""}`}
+                    aria-hidden="true"
+                  >
+                    {paused ? "Paused" : "Pause"}
+                  </span>
+                </SortableItem>
+              );
+            }}
+          </SortableOverlay>
+        </Sortable>
+        {outsideQueueMemberIds.map((memberId) => {
           const member = membersById.get(memberId);
           const displayName = member?.displayName ?? "Dropday member";
-          const index = memberIds.indexOf(memberId);
           const paused = pausedMemberIdSet.has(memberId);
-          const outsideQueue = index === -1;
           const changing = savingMemberId === memberId;
           return (
             <div
-              className={`member-row member-order-row${draggingMemberId === memberId ? " member-order-row-dragging" : ""}${paused ? " member-order-row-paused" : ""}`}
-              data-member-id={outsideQueue ? undefined : memberId}
+              className={`member-row member-order-row${paused ? " member-order-row-paused" : ""}`}
               key={memberId}
             >
-              {outsideQueue
-                ? <span className="member-order-handle member-order-handle-disabled" aria-hidden="true"><GripVertical size={16} /></span>
-                : <button
-                    type="button"
-                    className="member-order-handle"
-                    aria-describedby="member-order-help"
-                    aria-label={`Move ${displayName}. Position ${index + 1} of ${memberIds.length}.`}
-                    aria-keyshortcuts="ArrowUp ArrowDown"
-                    aria-disabled={saving}
-                    onKeyDown={(event) => moveWithKeyboard(event, memberId)}
-                    onPointerDown={(event) => beginPointerDrag(event, memberId)}
-                    onPointerMove={continuePointerDrag}
-                    onPointerUp={endPointerDrag}
-                    onPointerCancel={cancelPointerDrag}
-                    onLostPointerCapture={cancelPointerDrag}
-                  >
-                    <GripVertical size={16} aria-hidden="true" />
-                  </button>}
+              <span className="member-order-handle member-order-handle-disabled" aria-hidden="true">
+                <GripVertical size={16} />
+              </span>
               <Avatar user={member} />
               <div>
                 <strong>{displayName}</strong>
-                <small>{outsideQueue ? "Outside rotation" : paused ? `Position ${index + 1} · Paused` : memberId === nextActiveMemberId ? "Next" : `Position ${index + 1}`}</small>
+                <small>Outside rotation</small>
               </div>
               <button
                 className={`button button-ghost button-small member-queue-toggle${paused ? " member-queue-toggle-paused" : ""}`}

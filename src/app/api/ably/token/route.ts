@@ -1,6 +1,7 @@
 import { Rest } from "ably";
 import { NextResponse } from "next/server";
 import { requireViewer } from "@/lib/auth";
+import { canViewDropContent } from "@/lib/drop-visibility";
 import { env, integrations } from "@/lib/env";
 import { getClubMemberships, getDropById } from "@/lib/repository";
 
@@ -12,7 +13,11 @@ export async function GET(request: Request) {
   const threadType = url.searchParams.get("threadType");
   const threadId = url.searchParams.get("threadId");
   if ((threadType !== "club" && threadType !== "drop") || !threadId) return NextResponse.json({ error: "Invalid thread" }, { status: 400 });
-  const clubId = threadType === "club" ? threadId : (await getDropById(threadId))?.clubId;
+  const drop = threadType === "drop" ? await getDropById(threadId) : null;
+  if (threadType === "drop" && (!drop || !canViewDropContent(drop, profile.id))) {
+    return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+  }
+  const clubId = threadType === "club" ? threadId : drop?.clubId;
   if (!clubId) return NextResponse.json({ error: "Thread not found" }, { status: 404 });
   const memberships = await getClubMemberships(clubId);
   if (!memberships.some((item) => item.userId === profile.id)) return NextResponse.json({ error: "Members only" }, { status: 403 });

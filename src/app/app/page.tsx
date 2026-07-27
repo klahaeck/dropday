@@ -7,6 +7,7 @@ import { Pill } from "@/components/pill";
 import { PlaylistDescription } from "@/components/playlist-description";
 import { ThemeDescription } from "@/components/theme-description";
 import { requireViewer } from "@/lib/auth";
+import { canViewDropContent } from "@/lib/drop-visibility";
 import { getMembershipEntitlement, getOwnershipEntitlement } from "@/lib/entitlements";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -29,6 +30,9 @@ export default async function DashboardPage() {
   const drops = (await Promise.all(clubs.map((club) => getClubDrops(club.id)))).flat();
   const assignment = drops.find((drop) => drop.assignedUserId === profile.id && drop.status === "scheduled") ?? drops.find((drop) => drop.status === "scheduled");
   const assignmentClub = clubs.find((club) => club.id === assignment?.clubId) ?? clubs[0];
+  const assignmentPlaylist = assignment && canViewDropContent(assignment, profile.id)
+    ? assignment.playlist
+    : undefined;
   const membership = getMembershipEntitlement(profile.plan, membershipCount, features.unlimitedMemberships);
   const ownership = getOwnershipEntitlement(profile.plan, ownedCount);
   const assignedUser = assignment ? await getUserProfile(assignment.assignedUserId) : null;
@@ -48,7 +52,7 @@ export default async function DashboardPage() {
     {assignment && assignmentClub && <section className="dashboard-grid">
       <div className="panel next-drop">
         <div className="next-drop-art" />
-        <div className="next-drop-copy"><div className="eyebrow-row"><Pill tone="orange"><CalendarDays size={12} /> Next drop</Pill><span className="tiny-label">{formatDateTime(assignment.scheduledFor, assignmentClub.schedule.timezone)}</span></div><h2>{assignment.playlist?.title ?? assignmentTheme?.name ?? "Freeform drop"}</h2>{assignment.playlist ? <PlaylistDescription html={assignment.playlist.descriptionHtml} fallback={assignment.playlist.description} /> : assignmentTheme ? <ThemeDescription html={assignmentTheme.guidanceHtml} fallback={assignmentTheme.guidance ?? ""} /> : <p>No shared theme this round. Choose the direction that feels right.</p>}<div className="countdown"><span><strong>04</strong><small>days</small></span><span><strong>18</strong><small>hours</small></span><span><strong>32</strong><small>minutes</small></span></div><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar user={assignedUser ?? undefined} /><strong>{assignment.assignedUserId === profile.id ? "You are dropping" : `${assignedUser?.displayName ?? "A member"} is dropping`}</strong></div></div>
+        <div className="next-drop-copy"><div className="eyebrow-row"><Pill tone="orange"><CalendarDays size={12} /> Next drop</Pill><span className="tiny-label">{formatDateTime(assignment.scheduledFor, assignmentClub.schedule.timezone)}</span></div><h2>{assignmentPlaylist?.title ?? assignmentTheme?.name ?? "Freeform drop"}</h2>{assignmentPlaylist ? <PlaylistDescription html={assignmentPlaylist.descriptionHtml} fallback={assignmentPlaylist.description} /> : assignmentTheme ? <ThemeDescription html={assignmentTheme.guidanceHtml} fallback={assignmentTheme.guidance ?? ""} /> : <p>No shared theme this round. Choose the direction that feels right.</p>}<div className="countdown"><span><strong>04</strong><small>days</small></span><span><strong>18</strong><small>hours</small></span><span><strong>32</strong><small>minutes</small></span></div><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar user={assignedUser ?? undefined} /><strong>{assignment.assignedUserId === profile.id ? "You are dropping" : `${assignedUser?.displayName ?? "A member"} is dropping`}</strong></div></div>
       </div>
       {assignmentTheme ? <aside className={`theme-card${assignmentTheme.imageUrl ? " theme-card-has-image" : ""}`}>{assignmentTheme.imageUrl && <Image src={assignmentTheme.imageUrl} alt="" fill sizes="(max-width: 800px) 100vw, 33vw" unoptimized />}<span className="pill pill-green">Current theme</span><h2>{assignmentTheme.name}</h2><ThemeDescription html={assignmentTheme.guidanceHtml} fallback={assignmentTheme.guidance ?? ""} /><div className="theme-card-foot"><span>{assignmentClub.name}</span><span>Theme #{assignmentTheme.version}</span></div></aside> : <aside className="theme-card"><span className="pill pill-orange">Freeform club</span><h2>No theme</h2><p>Each member chooses their own direction for the drop.</p><div className="theme-card-foot"><span>{assignmentClub.name}</span><span>Freeform</span></div></aside>}
     </section>}

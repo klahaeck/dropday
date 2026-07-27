@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
 import { chatNotificationPreview, resolveMentionedUserIds } from "@/lib/chat-mentions";
+import { canViewDropContent } from "@/lib/drop-visibility";
 import { env, integrations } from "@/lib/env";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import {
@@ -31,6 +32,10 @@ export async function POST(request: Request) {
   const drop = parsed.data.threadType === "drop" ? await getDropById(parsed.data.threadId) : null;
   const clubId = parsed.data.threadType === "club" ? parsed.data.threadId : drop?.clubId;
   if (!clubId) return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+  const timestamp = new Date().toISOString();
+  if (drop && !canViewDropContent(drop, profile.id, timestamp)) {
+    return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+  }
   const [club, memberships] = await Promise.all([
     getClubById(clubId),
     getClubMemberships(clubId),
@@ -44,8 +49,7 @@ export async function POST(request: Request) {
     members,
     parsed.data.mentionedUserIds,
     profile.id,
-  );
-  const timestamp = new Date().toISOString();
+  ).filter((userId) => !drop || canViewDropContent(drop, userId, timestamp));
   const message: ChatMessage = {
     id: createId("message"), threadType: parsed.data.threadType, threadId: parsed.data.threadId,
     authorId: profile.id, authorName: profile.displayName, authorInitials: profile.initials,

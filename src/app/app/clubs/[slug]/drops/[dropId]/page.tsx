@@ -5,6 +5,7 @@ import { ChatPanel } from "@/components/chat-panel";
 import { Pill } from "@/components/pill";
 import { PlaylistDescription } from "@/components/playlist-description";
 import { requireViewer } from "@/lib/auth";
+import { canViewDropContent } from "@/lib/drop-visibility";
 import { integrations } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
 import { getPlaylistVersions } from "@/lib/playlist-providers";
@@ -23,12 +24,16 @@ export default async function DropDetailPage({ params }: { params: Promise<{ slu
   if (!club || !drop || drop.clubId !== club.id) notFound();
   const memberships = await getClubMemberships(club.id);
   if (!memberships.some((membership) => membership.userId === profile.id)) notFound();
+  const timestamp = new Date().toISOString();
+  if (!canViewDropContent(drop, profile.id, timestamp)) notFound();
   const [users, messages] = await Promise.all([
     getUsersByIds(memberships.map((membership) => membership.userId)),
     listMessages("drop", drop.id),
   ]);
   const author = users.find((user) => user.id === drop.assignedUserId);
-  const chatMembers = users.map(({ id, displayName, initials, imageUrl }) => ({ id, displayName, initials, imageUrl }));
+  const chatMembers = users
+    .filter((user) => canViewDropContent(drop, user.id, timestamp))
+    .map(({ id, displayName, initials, imageUrl }) => ({ id, displayName, initials, imageUrl }));
 
   if (!drop.playlist) return <><Link href={`/app/clubs/${slug}`} className="button button-ghost button-small"><ArrowLeft size={14} /> Back to club</Link><div className="empty-state" style={{ marginTop: 30 }}><CalendarClock size={32} /><h2>This playlist has not dropped yet.</h2><p>The detail room opens as soon as the assigned member attaches a prepared playlist.</p></div></>;
 

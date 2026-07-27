@@ -13,6 +13,7 @@ import { Pill } from "@/components/pill";
 import { ThemePanel } from "@/components/theme-panel";
 import { requireViewer } from "@/lib/auth";
 import { getClubAccentForeground, normalizeClubAccent } from "@/lib/club-accent";
+import { canViewDropContent, hasDropReachedScheduledTime } from "@/lib/drop-visibility";
 import { integrations } from "@/lib/env";
 import { formatDateTime, formatDateTimeParts, scheduleLabel } from "@/lib/format";
 import { nextOccurrences } from "@/lib/scheduling";
@@ -69,6 +70,13 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
     .map(({ id, displayName, initials, imageUrl }) => ({ id, displayName, initials, imageUrl }));
   const activeDrop = drops.find((drop) => drop.id === club.activeDropId)
     ?? drops.find((drop) => drop.status === "scheduled" || drop.status === "overdue");
+  const timestamp = new Date().toISOString();
+  const canViewActiveDropContent = Boolean(
+    activeDrop && canViewDropContent(activeDrop, profile.id, timestamp),
+  );
+  const activeDropHasReleased = Boolean(
+    activeDrop && hasDropReachedScheduledTime(activeDrop, timestamp),
+  );
   const pastDrops = drops.filter((drop) => drop.status === "published" && drop.playlist);
   const pausedMemberIds = new Set(memberships.filter((membership) => membership.queuePaused).map((membership) => membership.userId));
   const activeRotationMemberIds = club.rotationMemberIds.filter((userId) => !pausedMemberIds.has(userId));
@@ -82,7 +90,7 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
     && activeDrop.status === "scheduled"
     && activeDrop.assignedUserId === profile.id
     && activeDrop.scheduleVersion === club.schedule.version
-    && activeDrop.scheduledFor > new Date().toISOString()
+    && activeDrop.scheduledFor > timestamp
     && !club.schedule.paused
     && club.custody.status !== "archived",
   );
@@ -92,8 +100,8 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
     <div className="club-layout" id="overview"><div>
       <section className="dashboard-grid">
         {club.currentTheme ? <ThemePanel theme={club.currentTheme} clubAccent={accent} /> : <FreeformPanel />}
-        <div className="panel"><span className="section-kicker">Next drop</span><h2 style={{ fontSize: 30 }}>{activeDrop?.status === "overdue" ? "Waiting on a playlist" : activeDropDateTime ? <>{activeDropDateTime.date}<br />{activeDropDateTime.time}</> : "Queue paused"}</h2><p>{activeDrop?.playlist ? `${activeDrop.playlist.title} is ready.` : "The assignee can attach a prepared playlist from their library."}</p>
-          {activeDrop?.playlist && <Link href={`/app/clubs/${club.slug}/drops/${activeDrop.id}`} className="button button-ghost button-small">Preview drop</Link>}
+        <div className="panel"><span className="section-kicker">Next drop</span><h2 style={{ fontSize: 30 }}>{activeDrop?.status === "overdue" ? "Waiting on a playlist" : activeDropDateTime ? <>{activeDropDateTime.date}<br />{activeDropDateTime.time}</> : "Queue paused"}</h2><p>{activeDrop?.playlist ? canViewActiveDropContent ? `${activeDrop.playlist.title} is ready.` : "The playlist is ready for the scheduled drop." : "The assignee can attach a prepared playlist from their library."}</p>
+          {activeDrop?.playlist && canViewActiveDropContent && <Link href={`/app/clubs/${club.slug}/drops/${activeDrop.id}`} className="button button-ghost button-small">{activeDropHasReleased ? "View drop" : "Preview drop"}</Link>}
           {canAttachToActiveDrop && activeDrop && (drafts.length
             ? <DropAttachmentForm
               dropId={activeDrop.id}
