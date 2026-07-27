@@ -2,11 +2,14 @@
 
 import type { ReactNode } from "react";
 import { ClerkProvider, PricingTable, SignIn, SignUp, UserButton } from "@clerk/nextjs";
+import { ui } from "@clerk/ui";
 import { useTheme } from "@/components/theme-provider";
 
 const clerkThemeVariables = {
   light: {
     colorNeutral: "#171713",
+    colorPrimary: "#171713",
+    colorPrimaryForeground: "#fffdf8",
     colorForeground: "#171713",
     colorMuted: "#e8e1d2",
     colorMutedForeground: "#6c685f",
@@ -17,6 +20,8 @@ const clerkThemeVariables = {
   },
   dark: {
     colorNeutral: "#f4f0e6",
+    colorPrimary: "#f4f0e6",
+    colorPrimaryForeground: "#171713",
     colorForeground: "#f4f0e6",
     colorMuted: "#302f29",
     colorMutedForeground: "#aaa59b",
@@ -46,6 +51,7 @@ function ClerkThemeProvider({ publishableKey, children }: { publishableKey: stri
   return (
     <ClerkProvider
       publishableKey={publishableKey}
+      ui={ui}
       appearance={{ variables: clerkThemeVariables[resolvedTheme] }}
     >
       {children}
