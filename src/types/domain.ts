@@ -1,3 +1,5 @@
+import type { SkinPreference } from "@/lib/skin";
+
 export type Id = string;
 export type IsoDate = string;
 
@@ -8,6 +10,8 @@ export type ClubLifecycle = "active" | "grace" | "archived";
 export type DropStatus = "scheduled" | "overdue" | "published" | "skipped" | "cancelled";
 export type PlaylistProvider = "spotify" | "apple-music";
 export type ThemePreference = "system" | "light" | "dark";
+/** Derived from the skin registry so adding a design only touches lib/skin.ts. */
+export type { SkinPreference };
 export type NotificationKind =
   | "invitation"
   | "membership"
@@ -31,6 +35,7 @@ export interface UserProfile {
   plan: PlanKey;
   emailNotifications: boolean;
   themePreference: ThemePreference;
+  skinPreference: SkinPreference;
   createdAt: IsoDate;
   updatedAt: IsoDate;
 }
