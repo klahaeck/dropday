@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
           initials: displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(),
           imageUrl: data.image_url, primaryEmail: data.email_addresses?.find((email) => email.id === data.primary_email_address_id)?.email_address,
           updatedAt: timestamp,
-        }, $setOnInsert: { plan: "free", emailNotifications: true, themePreference: "system", createdAt: timestamp } },
+        }, $setOnInsert: { plan: "free", emailNotifications: true, themePreference: "system", skinPreference: "classic", createdAt: timestamp } },
         { upsert: true },
       );
     }

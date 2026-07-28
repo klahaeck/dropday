@@ -10,6 +10,7 @@ import {
   planFromPrivateMetadata,
   type ProductFeatureAccess,
 } from "@/lib/entitlements";
+import { DEFAULT_SKIN } from "@/lib/skin";
 import type { UserProfile } from "@/types/domain";
 
 export interface Viewer {
@@ -52,6 +53,7 @@ export async function getViewer(): Promise<Viewer | null> {
     plan,
     emailNotifications: existingProfile?.emailNotifications ?? true,
     themePreference: existingProfile?.themePreference ?? "system",
+    skinPreference: existingProfile?.skinPreference ?? DEFAULT_SKIN,
     createdAt: existingProfile?.createdAt ?? new Date(clerkUser.createdAt).toISOString(),
     updatedAt: timestamp,
   };

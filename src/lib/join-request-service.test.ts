@@ -25,6 +25,7 @@ const requester: UserProfile = {
   plan: "free",
   emailNotifications: true,
   themePreference: "system",
+  skinPreference: "classic",
   createdAt: timestamp,
   updatedAt: timestamp,
 };

@@ -48,7 +48,10 @@ async function prepareArtwork(file: File): Promise<File> {
     canvas.height = 720;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("This browser could not prepare the image.");
-    context.fillStyle = "#f2eee5";
+    // Letterboxing should match the paper the artwork sits on, which differs per
+    // skin, so read it from the active theme instead of hard-coding one palette.
+    const paper = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
+    context.fillStyle = paper || "#f4f0e6";
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(
       image,
