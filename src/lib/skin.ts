@@ -14,9 +14,10 @@ export interface SkinDefinition {
  *
  * To add a design:
  *   1. Add an entry below.
- *   2. Create `src/app/skin-<id>.css` with every rule scoped to
- *      `:root[data-skin="<id>"]`. The default lives in `globals.css` and needs
- *      no change — scopes are mutually exclusive, so nothing leaks either way.
+ *   2. Create `src/app/skin-<id>.css` with its rules scoped to
+ *      `:root[data-skin="<id>"]`. Alternate designs inherit the complete
+ *      opt-in component foundation in `skin-brutal.css`; the default lives in
+ *      `globals.css`. Scopes are mutually exclusive, so nothing leaks.
  *   3. Import that stylesheet in `src/app/layout.tsx`.
  *   4. Add its Clerk palette in `src/components/clerk-ui.tsx` and its icon in
  *      `src/components/skin-provider.tsx`. Both are keyed by skin id, so
@@ -25,6 +26,11 @@ export interface SkinDefinition {
 export const SKINS = [
   { id: "classic", label: "Classic", description: "The original Dropday look." },
   { id: "brutal", label: "Brutal", description: "Squared edges, heavier type, and brighter accents." },
+  { id: "seventies", label: "70s", description: "Warm earth tones, soft curves, and record-store soul." },
+  { id: "eighties", label: "80s", description: "Neon color, sharp geometry, and after-dark energy." },
+  { id: "metal", label: "Metal", description: "Blackened chrome, amplifier red, and hard-edged contrast." },
+  { id: "rap", label: "Rap", description: "Bold type, warm gold, and mixtape-inspired contrast." },
+  { id: "classical", label: "Classical", description: "Ivory paper, concert-hall burgundy, and composed detail." },
 ] as const satisfies readonly SkinDefinition[];
 
 export type SkinPreference = (typeof SKINS)[number]["id"];

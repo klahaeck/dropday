@@ -1,0 +1,270 @@
+/*
+ * Dropday Rap — bold editorial type, warm gold, and mixtape contrast.
+ */
+:root[data-skin="rap"] {
+  color-scheme: light;
+  --font-sans: Inter;
+  --ink: #21142d;
+  --paper: #f3e8c9;
+  --paper-deep: #dec890;
+  --white: #fff8e9;
+  --orange: #d3a62f;
+  --orange-soft: #f0cf79;
+  --plan-accent-selector: var(--sun);
+  --green: #62bb91;
+  --green-deep: #256a4c;
+  --violet: #723996;
+  --sky: #4c79bb;
+  --bubble: #d85c95;
+  --sun: #efc84c;
+  --danger: #b62248;
+  --accent-1: var(--orange);
+  --accent-2: var(--green);
+  --accent-3: var(--sky);
+  --accent-4: var(--bubble);
+  --accent-5: var(--sun);
+  --accent-6: var(--violet);
+  --accent-ink: #1a1022;
+  --accent-paper: #fff8e9;
+  --resident-unlimited-gradient: linear-gradient(120deg, var(--violet), var(--bubble) 48%, var(--sun));
+  --edge: rgba(55, 31, 66, 0.3);
+  --edge-strong: rgba(55, 31, 66, 0.5);
+  --accent-edge: rgba(26, 16, 34, 0.38);
+  --line: rgba(55, 31, 66, 0.16);
+  --shadow-ink: rgba(74, 38, 91, 0.3);
+  --shadow: 6px 6px 0 var(--shadow-ink);
+  --inverse: #1a1022;
+  --on-inverse: #fff2cf;
+  --solid: #21142d;
+  --on-solid: #fff8e9;
+  --copy: #51405a;
+  --muted: #715f76;
+  --inverse-muted: #c9b6cf;
+  --sidebar: #e5d4a8;
+  --surface-subtle: #f7efd9;
+  --surface: #fff8e9;
+  --surface-hover: rgba(114, 57, 150, 0.09);
+  --header-glass: color-mix(in srgb, var(--paper) 92%, transparent);
+  --focus: #9f7514;
+}
+
+:root[data-skin="rap"][data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #fff2cf;
+  --paper: #100915;
+  --paper-deep: #2e1b38;
+  --white: #1c1025;
+  --green-deep: #78d6aa;
+  --danger: #ff789b;
+  --edge: rgba(231, 185, 62, 0.3);
+  --edge-strong: rgba(231, 185, 62, 0.48);
+  --line: rgba(255, 242, 207, 0.15);
+  --shadow-ink: rgba(114, 57, 150, 0.5);
+  --inverse: #08040b;
+  --on-inverse: #fff2cf;
+  --solid: #e7b93e;
+  --on-solid: #1a1022;
+  --copy: #decce2;
+  --muted: #c4aecb;
+  --inverse-muted: #c4aecb;
+  --sidebar: #160c1d;
+  --surface-subtle: #160c1d;
+  --surface: #1c1025;
+  --surface-hover: rgba(231, 185, 62, 0.1);
+  --header-glass: color-mix(in srgb, var(--paper) 92%, transparent);
+  --focus: #e7b93e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="rap"]:not([data-theme]) {
+    color-scheme: dark;
+    --ink: #fff2cf;
+    --paper: #100915;
+    --paper-deep: #2e1b38;
+    --white: #1c1025;
+    --green-deep: #78d6aa;
+    --danger: #ff789b;
+    --edge: rgba(231, 185, 62, 0.3);
+    --edge-strong: rgba(231, 185, 62, 0.48);
+    --line: rgba(255, 242, 207, 0.15);
+    --shadow-ink: rgba(114, 57, 150, 0.5);
+    --inverse: #08040b;
+    --on-inverse: #fff2cf;
+    --solid: #e7b93e;
+    --on-solid: #1a1022;
+    --copy: #decce2;
+    --muted: #c4aecb;
+    --inverse-muted: #c4aecb;
+    --sidebar: #160c1d;
+    --surface-subtle: #160c1d;
+    --surface: #1c1025;
+    --surface-hover: rgba(231, 185, 62, 0.1);
+    --header-glass: color-mix(in srgb, var(--paper) 92%, transparent);
+    --focus: #e7b93e;
+  }
+}
+
+:root[data-skin="rap"] body {
+  background-color: var(--paper);
+  background-image: radial-gradient(color-mix(in srgb, var(--violet) 13%, transparent) 1.3px, transparent 1.3px);
+  background-size: 22px 22px;
+  background-attachment: fixed;
+}
+
+:root[data-skin="rap"] h1,
+:root[data-skin="rap"] h2,
+:root[data-skin="rap"] h3 {
+  font-family: var(--font-display), Impact, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.92;
+}
+:root[data-skin="rap"] .brand-name {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+:root[data-skin="rap"] .button { border-radius: 10px; }
+:root[data-skin="rap"] .button:hover { box-shadow: 5px 5px 0 var(--sun); }
+:root[data-skin="rap"] .button-dark:hover { box-shadow: 5px 5px 0 var(--sun); }
+:root[data-skin="rap"] .pill,
+:root[data-skin="rap"] .notification-icon,
+:root[data-skin="rap"] .mobile-nav a,
+:root[data-skin="rap"] .mobile-nav button,
+:root[data-skin="rap"] .mobile-menu-close { border-radius: 999px; }
+:root[data-skin="rap"] .section-kicker:before {
+  width: 15px;
+  height: 15px;
+  background: var(--sun);
+  border: 3px solid var(--violet);
+  transform: rotate(-8deg);
+}
+
+:root[data-skin="rap"] .marketing-header { border-bottom: 3px solid var(--ink); }
+:root[data-skin="rap"] .marketing-nav > a:not(.button):hover {
+  color: var(--accent-ink);
+  background: var(--sun);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 var(--violet);
+}
+:root[data-skin="rap"] .hero h1 {
+  color: var(--ink);
+  text-shadow: 6px 6px 0 var(--sun);
+}
+:root[data-skin="rap"] .hero h1 em {
+  color: var(--violet);
+  font-style: normal;
+  -webkit-text-stroke: 0;
+}
+:root[data-skin="rap"] .hero-note:before { background: var(--sun); box-shadow: 5px 5px 0 var(--violet); }
+:root[data-skin="rap"] .vinyl {
+  box-shadow:
+    inset 0 0 0 13px var(--ink),
+    inset 0 0 0 14px var(--sun),
+    inset 0 0 0 34px var(--ink),
+    inset 0 0 0 35px var(--bubble),
+    inset 0 0 0 55px var(--ink),
+    14px 14px 0 var(--violet);
+}
+:root[data-skin="rap"] .drop-ticket {
+  border-radius: 12px;
+  box-shadow: 13px 15px 0 var(--sun), 20px 22px 0 var(--violet);
+  transform: rotate(-2deg);
+}
+:root[data-skin="rap"] .ticket-art {
+  border-radius: 7px;
+  background: linear-gradient(145deg, var(--sun), var(--orange) 50%, var(--bubble));
+}
+
+:root[data-skin="rap"] .marquee {
+  color: var(--on-inverse);
+  background: linear-gradient(90deg, var(--inverse), var(--violet), var(--inverse));
+  border-block: 3px solid var(--sun);
+}
+:root[data-skin="rap"] .marquee-separator { color: var(--sun); }
+:root[data-skin="rap"] .marketing-section-dark {
+  background:
+    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--violet) 34%, transparent), transparent 34%),
+    var(--inverse);
+  border-block-color: var(--sun);
+}
+
+:root[data-skin="rap"] .steps-grid,
+:root[data-skin="rap"] .price-stack { gap: 14px; background: transparent; border: 0; }
+:root[data-skin="rap"] .step-card,
+:root[data-skin="rap"] .price-strip,
+:root[data-skin="rap"] .queue-demo {
+  border: 2px solid var(--edge-strong);
+  border-radius: 12px;
+  box-shadow: 7px 7px 0 var(--shadow-ink);
+}
+:root[data-skin="rap"] .step-card:nth-child(2) { box-shadow: 7px 7px 0 var(--violet); }
+:root[data-skin="rap"] .step-card:nth-child(3) { box-shadow: 7px 7px 0 var(--sun); }
+
+:root[data-skin="rap"] .app-sidebar {
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--sun) 22%, transparent), transparent 42%),
+    var(--sidebar);
+  border-right: 3px solid var(--edge-strong);
+}
+:root[data-skin="rap"] .app-navigation a,
+:root[data-skin="rap"] .mobile-menu-navigation a { border-radius: 8px; }
+:root[data-skin="rap"] .app-navigation a[aria-current="page"] {
+  color: var(--accent-ink);
+  background: var(--sun);
+  border-color: var(--violet);
+  box-shadow: 4px 4px 0 var(--violet);
+}
+
+:root[data-skin="rap"] .panel,
+:root[data-skin="rap"] .settings-card,
+:root[data-skin="rap"] .stats-card,
+:root[data-skin="rap"] .theme-panel,
+:root[data-skin="rap"] .freeform-panel,
+:root[data-skin="rap"] .form-shell,
+:root[data-skin="rap"] .club-card,
+:root[data-skin="rap"] .playlist-card,
+:root[data-skin="rap"] .playlist-detail-hero,
+:root[data-skin="rap"] .playlist-version-card,
+:root[data-skin="rap"] .pricing-card,
+:root[data-skin="rap"] .chat-panel,
+:root[data-skin="rap"] .next-drop,
+:root[data-skin="rap"] .club-hero,
+:root[data-skin="rap"] .playlist-selector-dialog {
+  border-color: var(--edge-strong);
+  border-radius: 12px;
+  box-shadow: 6px 6px 0 var(--shadow-ink);
+}
+:root[data-skin="rap"] .club-card:hover,
+:root[data-skin="rap"] .playlist-card:hover { box-shadow: 9px 9px 0 var(--sun); }
+:root[data-skin="rap"] .club-card-art,
+:root[data-skin="rap"] .playlist-cover,
+:root[data-skin="rap"] .playlist-detail-cover,
+:root[data-skin="rap"] .next-drop-art,
+:root[data-skin="rap"] .artwork-preview { border-radius: 8px; }
+
+:root[data-skin="rap"] .field input,
+:root[data-skin="rap"] .field textarea,
+:root[data-skin="rap"] .field select,
+:root[data-skin="rap"] .rich-text-shell,
+:root[data-skin="rap"] .color-field,
+:root[data-skin="rap"] .artwork-picker,
+:root[data-skin="rap"] .theme-current-toggle { border-radius: 8px; border-color: var(--edge-strong); }
+:root[data-skin="rap"] .field input:focus,
+:root[data-skin="rap"] .field textarea:focus,
+:root[data-skin="rap"] .field select:focus,
+:root[data-skin="rap"] .rich-text-shell:focus-within { box-shadow: 4px 4px 0 var(--sun); }
+
+:root[data-skin="rap"] .settings-card { box-shadow: inset 0 8px 0 var(--violet), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="rap"] .settings-card:nth-child(2) { box-shadow: inset 0 8px 0 var(--sun), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="rap"] .settings-card:nth-child(3) { box-shadow: inset 0 8px 0 var(--sky), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="rap"] .settings-card:nth-child(4) { box-shadow: inset 0 8px 0 var(--bubble), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="rap"] .theme-selector { gap: 4px; padding: 4px; background: var(--violet); border-color: var(--violet); border-radius: 12px; }
+:root[data-skin="rap"] .theme-option { border-radius: 8px; }
+:root[data-skin="rap"] .theme-option[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: var(--sun);
+  box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--violet) 34%, transparent);
+}
+

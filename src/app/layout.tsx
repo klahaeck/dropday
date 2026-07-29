@@ -8,8 +8,14 @@ import { DEFAULT_SKIN, SKIN_IDS, SKIN_STORAGE_KEY } from "@/lib/skin";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { env, integrations } from "@/lib/env";
 import "./globals.css";
-// One stylesheet per opt-in design, each scoped to its own skin id. See lib/skin.ts.
+// Alternate designs share the complete opt-in component foundation in
+// skin-brutal.css, then each skin layers its own scoped visual language.
 import "./skin-brutal.css";
+import "./skin-seventies.css";
+import "./skin-eighties.css";
+import "./skin-metal.css";
+import "./skin-rap.css";
+import "./skin-classical.css";
 
 // Only opt-in skins render text in these families, so they are not preloaded:
 // visitors on the default design would otherwise fetch faces they never use.

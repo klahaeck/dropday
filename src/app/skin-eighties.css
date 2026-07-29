@@ -1,0 +1,315 @@
+/*
+ * Dropday 80s — midnight neon, arcade geometry, and electric gradients.
+ *
+ * The complete component layout comes from skin-brutal.css. Every rule here is
+ * scoped to this skin and changes only its visual language.
+ */
+:root[data-skin="eighties"] {
+  color-scheme: light;
+  --font-sans: var(--font-mono);
+  --ink: #170b30;
+  --paper: #f1ebff;
+  --paper-deep: #d8c9f2;
+  --white: #fffaff;
+  --orange: #f238a0;
+  --orange-soft: #ffc0e5;
+  --plan-accent-selector: var(--green);
+  --green: #52dff1;
+  --green-deep: #087784;
+  --violet: #713cff;
+  --sky: #7291ff;
+  --bubble: #ff76d2;
+  --sun: #ffe45c;
+  --danger: #c70f52;
+  --accent-1: var(--orange);
+  --accent-2: var(--green);
+  --accent-3: var(--sky);
+  --accent-4: var(--bubble);
+  --accent-5: var(--sun);
+  --accent-6: var(--violet);
+  --accent-ink: #10051f;
+  --accent-paper: #fffaff;
+  --resident-unlimited-gradient: linear-gradient(115deg, var(--violet), var(--orange) 48%, var(--green));
+  --edge: rgba(50, 20, 82, 0.3);
+  --edge-strong: rgba(50, 20, 82, 0.5);
+  --accent-edge: rgba(16, 5, 31, 0.38);
+  --line: rgba(50, 20, 82, 0.16);
+  --shadow-ink: rgba(113, 60, 255, 0.28);
+  --shadow: 6px 6px 0 var(--shadow-ink);
+  --inverse: #10051f;
+  --on-inverse: #f8f1ff;
+  --solid: #29105a;
+  --on-solid: #ffffff;
+  --copy: #443457;
+  --muted: #655578;
+  --inverse-muted: #b9a9cc;
+  --sidebar: #e7dcfa;
+  --surface-subtle: #f6f1ff;
+  --surface: #fffaff;
+  --surface-hover: rgba(113, 60, 255, 0.09);
+  --header-glass: color-mix(in srgb, var(--paper) 90%, transparent);
+  --focus: #087f8f;
+}
+
+:root[data-skin="eighties"][data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f5efff;
+  --paper: #070312;
+  --paper-deep: #1d1037;
+  --white: #120a25;
+  --green-deep: #7ff3ff;
+  --danger: #ff6b9f;
+  --edge: rgba(87, 232, 255, 0.28);
+  --edge-strong: rgba(255, 60, 172, 0.5);
+  --line: rgba(203, 180, 255, 0.16);
+  --shadow-ink: rgba(255, 60, 172, 0.34);
+  --inverse: #030106;
+  --on-inverse: #f5efff;
+  --solid: #57e8ff;
+  --on-solid: #070312;
+  --copy: #d4c6e5;
+  --muted: #ad9cbe;
+  --inverse-muted: #ad9cbe;
+  --sidebar: #0c0619;
+  --surface-subtle: #0c0619;
+  --surface: #120a25;
+  --surface-hover: rgba(87, 232, 255, 0.1);
+  --header-glass: color-mix(in srgb, var(--paper) 90%, transparent);
+  --focus: #57e8ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="eighties"]:not([data-theme]) {
+    color-scheme: dark;
+    --ink: #f5efff;
+    --paper: #070312;
+    --paper-deep: #1d1037;
+    --white: #120a25;
+    --green-deep: #7ff3ff;
+    --danger: #ff6b9f;
+    --edge: rgba(87, 232, 255, 0.28);
+    --edge-strong: rgba(255, 60, 172, 0.5);
+    --line: rgba(203, 180, 255, 0.16);
+    --shadow-ink: rgba(255, 60, 172, 0.34);
+    --inverse: #030106;
+    --on-inverse: #f5efff;
+    --solid: #57e8ff;
+    --on-solid: #070312;
+    --copy: #d4c6e5;
+    --muted: #ad9cbe;
+    --inverse-muted: #ad9cbe;
+    --sidebar: #0c0619;
+    --surface-subtle: #0c0619;
+    --surface: #120a25;
+    --surface-hover: rgba(87, 232, 255, 0.1);
+    --header-glass: color-mix(in srgb, var(--paper) 90%, transparent);
+    --focus: #57e8ff;
+  }
+}
+
+:root[data-skin="eighties"] body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--green) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--orange) 7%, transparent) 1px, transparent 1px);
+  background-size: 34px 34px;
+  background-attachment: fixed;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+:root[data-skin="eighties"] h1,
+:root[data-skin="eighties"] h2,
+:root[data-skin="eighties"] h3 {
+  font-family: var(--font-display), Impact, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+  text-transform: uppercase;
+}
+:root[data-skin="eighties"] .brand-name {
+  font-family: var(--font-display), sans-serif;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+:root[data-skin="eighties"] .button {
+  border-radius: 2px;
+  border-color: var(--edge-strong);
+  font-family: var(--font-mono), monospace;
+}
+:root[data-skin="eighties"] .button:hover { box-shadow: 5px 5px 0 var(--orange), -2px -2px 0 var(--green); }
+:root[data-skin="eighties"] .button-dark { background: var(--solid); border-color: var(--solid); }
+:root[data-skin="eighties"] .button-dark:hover { box-shadow: 5px 5px 0 var(--orange), -2px -2px 0 var(--green); }
+
+:root[data-skin="eighties"] .pill,
+:root[data-skin="eighties"] .notification-icon,
+:root[data-skin="eighties"] .mobile-nav a,
+:root[data-skin="eighties"] .mobile-nav button,
+:root[data-skin="eighties"] .mobile-menu-close { border-radius: 2px; }
+:root[data-skin="eighties"] .section-kicker:before {
+  width: 7px;
+  height: 16px;
+  background: var(--orange);
+  box-shadow: 8px 0 0 var(--green);
+  transform: skew(-18deg);
+}
+:root[data-skin="eighties"] ::selection { color: var(--accent-ink); background: var(--green); }
+
+:root[data-skin="eighties"] .marketing-header { border-bottom: 1px solid var(--green); }
+:root[data-skin="eighties"] .marketing-nav > a:not(.button):hover {
+  color: var(--accent-ink);
+  background: var(--green);
+  box-shadow: 4px 4px 0 var(--orange);
+}
+:root[data-skin="eighties"] .hero h1 {
+  color: transparent;
+  background: linear-gradient(105deg, var(--green) 4%, var(--sky) 34%, var(--orange) 66%, var(--sun));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(5px 5px 0 color-mix(in srgb, var(--violet) 38%, transparent));
+}
+:root[data-skin="eighties"] .hero h1 em {
+  color: inherit;
+  font-style: italic;
+  -webkit-text-stroke: 0;
+}
+:root[data-skin="eighties"] .hero-note:before {
+  width: 16px;
+  height: 8px;
+  background: var(--green);
+  box-shadow: 6px 6px 0 var(--orange);
+  transform: skew(-20deg);
+}
+:root[data-skin="eighties"] .vinyl {
+  border-color: var(--green);
+  box-shadow:
+    inset 0 0 0 13px var(--ink),
+    inset 0 0 0 14px var(--green),
+    inset 0 0 0 34px var(--ink),
+    inset 0 0 0 35px var(--orange),
+    inset 0 0 0 55px var(--ink),
+    0 0 28px color-mix(in srgb, var(--green) 65%, transparent),
+    15px 15px 0 var(--violet);
+}
+:root[data-skin="eighties"] .drop-ticket {
+  border-color: var(--green);
+  box-shadow: 13px 15px 0 var(--orange);
+  transform: rotate(3deg);
+}
+:root[data-skin="eighties"] .ticket-art {
+  background: linear-gradient(135deg, var(--violet), var(--orange) 55%, var(--sun));
+}
+:root[data-skin="eighties"] .ticket-art:after { border-radius: 0; transform: rotate(45deg); }
+
+:root[data-skin="eighties"] .marquee {
+  color: var(--on-inverse);
+  background: linear-gradient(90deg, var(--violet), #161035 45%, var(--orange));
+  border-block-color: var(--green);
+}
+:root[data-skin="eighties"] .marquee-separator { color: var(--sun); text-shadow: 0 0 10px var(--sun); }
+
+:root[data-skin="eighties"] .marketing-section-dark {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--violet) 22%, transparent), transparent 45%),
+    var(--inverse);
+  border-block-color: var(--green);
+}
+:root[data-skin="eighties"] .section-heading { border-top-color: var(--orange); }
+:root[data-skin="eighties"] .steps-grid,
+:root[data-skin="eighties"] .price-stack {
+  gap: 10px;
+  background: transparent;
+  border: 0;
+}
+:root[data-skin="eighties"] .step-card,
+:root[data-skin="eighties"] .price-strip {
+  border: 2px solid var(--edge-strong);
+  box-shadow: 7px 7px 0 var(--shadow-ink);
+}
+:root[data-skin="eighties"] .step-card:nth-child(2) { box-shadow: 7px 7px 0 var(--violet); }
+:root[data-skin="eighties"] .step-card:nth-child(3) { box-shadow: 7px 7px 0 var(--orange); }
+:root[data-skin="eighties"] .queue-demo {
+  border-color: var(--green);
+  box-shadow: 11px 11px 0 var(--orange);
+  transform: rotate(1deg);
+}
+
+:root[data-skin="eighties"] .app-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--violet) 17%, transparent), transparent 42%),
+    var(--sidebar);
+  border-right-color: var(--green);
+}
+:root[data-skin="eighties"] .app-navigation a[aria-current="page"] {
+  color: var(--accent-ink);
+  background: var(--green);
+  border-color: var(--orange);
+  box-shadow: 4px 4px 0 var(--orange);
+}
+
+:root[data-skin="eighties"] .panel,
+:root[data-skin="eighties"] .settings-card,
+:root[data-skin="eighties"] .stats-card,
+:root[data-skin="eighties"] .theme-panel,
+:root[data-skin="eighties"] .freeform-panel,
+:root[data-skin="eighties"] .form-shell,
+:root[data-skin="eighties"] .club-card,
+:root[data-skin="eighties"] .playlist-card,
+:root[data-skin="eighties"] .playlist-detail-hero,
+:root[data-skin="eighties"] .playlist-version-card,
+:root[data-skin="eighties"] .pricing-card,
+:root[data-skin="eighties"] .chat-panel,
+:root[data-skin="eighties"] .next-drop,
+:root[data-skin="eighties"] .club-hero,
+:root[data-skin="eighties"] .playlist-selector-dialog {
+  border-color: var(--edge-strong);
+  border-radius: 2px;
+  box-shadow: 6px 6px 0 var(--shadow-ink);
+}
+:root[data-skin="eighties"] .club-card:hover,
+:root[data-skin="eighties"] .playlist-card:hover {
+  border-color: var(--green);
+  box-shadow: 9px 9px 0 var(--orange);
+}
+:root[data-skin="eighties"] .club-card-art,
+:root[data-skin="eighties"] .playlist-cover,
+:root[data-skin="eighties"] .playlist-detail-cover,
+:root[data-skin="eighties"] .next-drop-art,
+:root[data-skin="eighties"] .artwork-preview { border-radius: 0; }
+
+:root[data-skin="eighties"] .field input,
+:root[data-skin="eighties"] .field textarea,
+:root[data-skin="eighties"] .field select,
+:root[data-skin="eighties"] .rich-text-shell,
+:root[data-skin="eighties"] .color-field,
+:root[data-skin="eighties"] .artwork-picker,
+:root[data-skin="eighties"] .theme-current-toggle {
+  border-color: var(--edge-strong);
+  border-radius: 2px;
+}
+:root[data-skin="eighties"] .field input:focus,
+:root[data-skin="eighties"] .field textarea:focus,
+:root[data-skin="eighties"] .field select:focus,
+:root[data-skin="eighties"] .rich-text-shell:focus-within { box-shadow: 4px 4px 0 var(--orange), -2px -2px 0 var(--green); }
+
+:root[data-skin="eighties"] .settings-card { box-shadow: inset 0 8px 0 var(--accent-6), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="eighties"] .settings-card:nth-child(2) { box-shadow: inset 0 8px 0 var(--accent-2), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="eighties"] .settings-card:nth-child(3) { box-shadow: inset 0 8px 0 var(--accent-3), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="eighties"] .settings-card:nth-child(4) { box-shadow: inset 0 8px 0 var(--accent-5), 6px 6px 0 var(--shadow-ink); }
+:root[data-skin="eighties"] .theme-selector {
+  gap: 4px;
+  padding: 4px;
+  background: linear-gradient(90deg, var(--violet), var(--orange), var(--green));
+  border-color: transparent;
+}
+:root[data-skin="eighties"] .theme-option { border: 1px solid transparent; }
+:root[data-skin="eighties"] .theme-option:hover { border-color: var(--green); }
+:root[data-skin="eighties"] .theme-option[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: var(--green);
+  border-color: var(--orange);
+  box-shadow: inset -5px -5px 0 color-mix(in srgb, var(--sky) 55%, transparent);
+}
+
