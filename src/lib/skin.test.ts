@@ -9,7 +9,7 @@ describe("skin preferences", () => {
     expect(isSkinPreference("eighties")).toBe(true);
     expect(isSkinPreference("metal")).toBe(true);
     expect(isSkinPreference("rap")).toBe(true);
-    expect(isSkinPreference("classical")).toBe(true);
+    expect(isSkinPreference("classical")).toBe(false);
     expect(isSkinPreference("stereo")).toBe(false);
     expect(isSkinPreference(undefined)).toBe(false);
   });
@@ -33,10 +33,11 @@ describe("skin preferences", () => {
     expect(resolveSkinPreference("eighties")).toBe("eighties");
     expect(resolveSkinPreference("metal")).toBe("metal");
     expect(resolveSkinPreference("rap")).toBe("rap");
-    expect(resolveSkinPreference("classical")).toBe("classical");
+    expect(resolveSkinPreference("classical")).toBe("classic");
   });
 
   it("describes every registered skin", () => {
+    expect(SKINS.map((skin) => skin.label)).toEqual(["Studio", "Raw", "Groove", "Neon", "Amped", "Mixtape"]);
     for (const skin of SKINS) {
       expect(skinDefinition(skin.id)).toEqual(skin);
       expect(skin.label.length).toBeGreaterThan(0);

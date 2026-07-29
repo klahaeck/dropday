@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
-import { Circle, Flower2, Guitar, MicVocal, Piano, Radio, Square } from "lucide-react";
+import { Circle, Flower2, Guitar, MicVocal, Radio, Square } from "lucide-react";
 import { DEFAULT_SKIN, isSkinPreference, SKIN_STORAGE_KEY, SKINS, skinDefinition } from "@/lib/skin";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -85,7 +85,6 @@ const skinIcons: Record<SkinPreference, LucideIcon> = {
   eighties: Radio,
   metal: Guitar,
   rap: MicVocal,
-  classical: Piano,
 };
 
 export function SkinSelector() {

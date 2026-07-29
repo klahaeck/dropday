@@ -197,38 +197,6 @@ const clerkThemeVariables = {
       fontFamily: "var(--font-sans)",
     },
   },
-  classical: {
-    light: {
-      colorNeutral: "#2c2019",
-      colorPrimary: "#752334",
-      colorPrimaryForeground: "#fffaf0",
-      colorForeground: "#2c2019",
-      colorMuted: "#e8dfca",
-      colorMutedForeground: "#6b5d51",
-      colorBackground: "#fbf7ec",
-      colorInput: "#fffaf0",
-      colorInputForeground: "#2c2019",
-      colorBorder: "rgba(70, 48, 37, 0.26)",
-      colorRing: "#8c6d2c",
-      borderRadius: "6px",
-      fontFamily: "Georgia, serif",
-    },
-    dark: {
-      colorNeutral: "#f4ead7",
-      colorPrimary: "#c99b50",
-      colorPrimaryForeground: "#1d1511",
-      colorForeground: "#f4ead7",
-      colorMuted: "#3b2e25",
-      colorMutedForeground: "#c2b39d",
-      colorBackground: "#221a16",
-      colorInput: "#221a16",
-      colorInputForeground: "#f4ead7",
-      colorBorder: "rgba(244, 234, 215, 0.24)",
-      colorRing: "#c99b50",
-      borderRadius: "6px",
-      fontFamily: "Georgia, serif",
-    },
-  },
 } as const satisfies Record<SkinPreference, Record<"light" | "dark", Record<string, string>>>;
 
 export function AuthProvider({

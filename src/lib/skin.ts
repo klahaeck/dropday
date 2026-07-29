@@ -24,13 +24,12 @@ export interface SkinDefinition {
  *      typecheck fails until they are filled in.
  */
 export const SKINS = [
-  { id: "classic", label: "Classic", description: "The original Dropday look." },
-  { id: "brutal", label: "Brutal", description: "Squared edges, heavier type, and brighter accents." },
-  { id: "seventies", label: "70s", description: "Warm earth tones, soft curves, and record-store soul." },
-  { id: "eighties", label: "80s", description: "Neon color, sharp geometry, and after-dark energy." },
-  { id: "metal", label: "Metal", description: "Blackened chrome, amplifier red, and hard-edged contrast." },
-  { id: "rap", label: "Rap", description: "Bold type, warm gold, and mixtape-inspired contrast." },
-  { id: "classical", label: "Classical", description: "Ivory paper, concert-hall burgundy, and composed detail." },
+  { id: "classic", label: "Studio", description: "The balanced, original Dropday look." },
+  { id: "brutal", label: "Raw", description: "Squared edges, heavier type, and brighter accents." },
+  { id: "seventies", label: "Groove", description: "Warm earth tones, soft curves, and record-store soul." },
+  { id: "eighties", label: "Neon", description: "Electric color, sharp geometry, and after-dark energy." },
+  { id: "metal", label: "Amped", description: "Blackened chrome, amplifier red, and hard-edged contrast." },
+  { id: "rap", label: "Mixtape", description: "Bold type, warm gold, and cut-and-paste contrast." },
 ] as const satisfies readonly SkinDefinition[];
 
 export type SkinPreference = (typeof SKINS)[number]["id"];
