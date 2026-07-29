@@ -5,6 +5,11 @@ describe("skin preferences", () => {
   it("accepts only supported skins", () => {
     expect(isSkinPreference("classic")).toBe(true);
     expect(isSkinPreference("brutal")).toBe(true);
+    expect(isSkinPreference("seventies")).toBe(true);
+    expect(isSkinPreference("eighties")).toBe(true);
+    expect(isSkinPreference("metal")).toBe(true);
+    expect(isSkinPreference("rap")).toBe(true);
+    expect(isSkinPreference("classical")).toBe(true);
     expect(isSkinPreference("stereo")).toBe(false);
     expect(isSkinPreference(undefined)).toBe(false);
   });
@@ -24,6 +29,11 @@ describe("skin preferences", () => {
   it("keeps a stored skin that is still supported", () => {
     expect(resolveSkinPreference("brutal")).toBe("brutal");
     expect(resolveSkinPreference("classic")).toBe("classic");
+    expect(resolveSkinPreference("seventies")).toBe("seventies");
+    expect(resolveSkinPreference("eighties")).toBe("eighties");
+    expect(resolveSkinPreference("metal")).toBe("metal");
+    expect(resolveSkinPreference("rap")).toBe("rap");
+    expect(resolveSkinPreference("classical")).toBe("classical");
   });
 
   it("describes every registered skin", () => {

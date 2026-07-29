@@ -1,0 +1,292 @@
+/*
+ * Dropday Classical — ivory paper, concert-hall burgundy, and composed detail.
+ */
+:root[data-skin="classical"] {
+  color-scheme: light;
+  --font-sans: Georgia;
+  --ink: #2c2019;
+  --paper: #eee6d3;
+  --paper-deep: #d9ccb0;
+  --white: #fbf7ec;
+  --orange: #8b2635;
+  --orange-soft: #d9afb5;
+  --plan-accent-selector: var(--sun);
+  --green: #71836b;
+  --green-deep: #40513e;
+  --violet: #39446d;
+  --sky: #8297a8;
+  --bubble: #b67c84;
+  --sun: #c2a15d;
+  --danger: #9b1d2e;
+  --accent-1: var(--orange);
+  --accent-2: var(--green);
+  --accent-3: var(--sky);
+  --accent-4: var(--bubble);
+  --accent-5: var(--sun);
+  --accent-6: var(--violet);
+  --accent-ink: #251915;
+  --accent-paper: #fffaf0;
+  --resident-unlimited-gradient: linear-gradient(110deg, var(--orange), var(--sun) 50%, var(--violet));
+  --edge: rgba(70, 48, 37, 0.26);
+  --edge-strong: rgba(70, 48, 37, 0.45);
+  --accent-edge: rgba(37, 25, 21, 0.34);
+  --line: rgba(70, 48, 37, 0.15);
+  --shadow-ink: rgba(74, 51, 38, 0.16);
+  --shadow: 0 5px 14px var(--shadow-ink);
+  --inverse: #34212a;
+  --on-inverse: #fffaf0;
+  --solid: #672234;
+  --on-solid: #fffaf0;
+  --copy: #584a3f;
+  --muted: #746559;
+  --inverse-muted: #cfc1ad;
+  --sidebar: #e4dac3;
+  --surface-subtle: #f3ecdc;
+  --surface: #fbf7ec;
+  --surface-hover: rgba(103, 34, 52, 0.07);
+  --header-glass: color-mix(in srgb, var(--paper) 94%, transparent);
+  --focus: #8c6d2c;
+}
+
+:root[data-skin="classical"][data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f4ead7;
+  --paper: #16110e;
+  --paper-deep: #3b2e25;
+  --white: #221a16;
+  --green-deep: #aab99f;
+  --danger: #e57b87;
+  --edge: rgba(244, 234, 215, 0.22);
+  --edge-strong: rgba(244, 234, 215, 0.38);
+  --line: rgba(244, 234, 215, 0.13);
+  --shadow-ink: rgba(0, 0, 0, 0.3);
+  --inverse: #0d0908;
+  --on-inverse: #f4ead7;
+  --solid: #c99b50;
+  --on-solid: #1d1511;
+  --copy: #d7c9b4;
+  --muted: #b9aa96;
+  --inverse-muted: #b9aa96;
+  --sidebar: #1c1512;
+  --surface-subtle: #1c1512;
+  --surface: #221a16;
+  --surface-hover: rgba(201, 155, 80, 0.08);
+  --header-glass: color-mix(in srgb, var(--paper) 94%, transparent);
+  --focus: #c99b50;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="classical"]:not([data-theme]) {
+    color-scheme: dark;
+    --ink: #f4ead7;
+    --paper: #16110e;
+    --paper-deep: #3b2e25;
+    --white: #221a16;
+    --green-deep: #aab99f;
+    --danger: #e57b87;
+    --edge: rgba(244, 234, 215, 0.22);
+    --edge-strong: rgba(244, 234, 215, 0.38);
+    --line: rgba(244, 234, 215, 0.13);
+    --shadow-ink: rgba(0, 0, 0, 0.3);
+    --inverse: #0d0908;
+    --on-inverse: #f4ead7;
+    --solid: #c99b50;
+    --on-solid: #1d1511;
+    --copy: #d7c9b4;
+    --muted: #b9aa96;
+    --inverse-muted: #b9aa96;
+    --sidebar: #1c1512;
+    --surface-subtle: #1c1512;
+    --surface: #221a16;
+    --surface-hover: rgba(201, 155, 80, 0.08);
+    --header-glass: color-mix(in srgb, var(--paper) 94%, transparent);
+    --focus: #c99b50;
+  }
+}
+
+:root[data-skin="classical"] body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(90deg, transparent 0 8%, color-mix(in srgb, var(--orange) 5%, transparent) 8% 8.1%, transparent 8.1% 91.9%, color-mix(in srgb, var(--orange) 5%, transparent) 91.9% 92%, transparent 92%),
+    repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in srgb, var(--ink) 3%, transparent) 31px 32px);
+  background-attachment: fixed;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+:root[data-skin="classical"] h1,
+:root[data-skin="classical"] h2,
+:root[data-skin="classical"] h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+:root[data-skin="classical"] .brand-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+:root[data-skin="classical"] .button {
+  border-width: 1px;
+  border-radius: 6px;
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.06em;
+}
+:root[data-skin="classical"] .button:hover { box-shadow: 0 4px 0 var(--sun); }
+:root[data-skin="classical"] .button-dark:hover { box-shadow: 0 4px 0 var(--sun); }
+:root[data-skin="classical"] .pill { border-width: 1px; border-radius: 999px; font-family: Georgia, serif; }
+:root[data-skin="classical"] .section-kicker {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.13em;
+}
+:root[data-skin="classical"] .section-kicker:before {
+  width: 10px;
+  height: 10px;
+  background: var(--sun);
+  border: 1px solid var(--orange);
+  transform: rotate(45deg);
+}
+
+:root[data-skin="classical"] .marketing-header {
+  border-bottom: 4px double var(--edge-strong);
+}
+:root[data-skin="classical"] .marketing-nav { font-family: Georgia, serif; letter-spacing: 0.06em; text-transform: none; }
+:root[data-skin="classical"] .marketing-nav > a:not(.button):hover {
+  color: var(--on-solid);
+  background: var(--solid);
+  box-shadow: 0 0 0 4px var(--solid);
+}
+:root[data-skin="classical"] .hero h1 { line-height: 0.94; }
+:root[data-skin="classical"] .hero h1 em {
+  color: var(--orange);
+  font-style: italic;
+  -webkit-text-stroke: 0;
+}
+:root[data-skin="classical"] .hero-note { font-family: Georgia, serif; text-transform: none; }
+:root[data-skin="classical"] .hero-note:before {
+  width: 9px;
+  height: 9px;
+  background: var(--sun);
+  border: 1px solid var(--orange);
+  transform: rotate(45deg);
+}
+:root[data-skin="classical"] .vinyl {
+  box-shadow:
+    inset 0 0 0 13px var(--ink),
+    inset 0 0 0 14px var(--sun),
+    inset 0 0 0 34px var(--ink),
+    inset 0 0 0 35px var(--orange),
+    inset 0 0 0 55px var(--ink),
+    0 12px 24px var(--shadow-ink);
+}
+:root[data-skin="classical"] .drop-ticket {
+  border: 1px solid var(--edge-strong);
+  border-radius: 8px;
+  box-shadow: 10px 12px 0 color-mix(in srgb, var(--sun) 65%, transparent);
+  transform: rotate(-1deg);
+}
+:root[data-skin="classical"] .ticket-art {
+  border-width: 1px;
+  background: linear-gradient(135deg, var(--orange), #a65362 55%, var(--sun));
+}
+
+:root[data-skin="classical"] .marquee {
+  background: var(--inverse);
+  border-block: 4px double var(--sun);
+}
+:root[data-skin="classical"] .marquee-group { font-family: Georgia, serif; letter-spacing: 0.08em; text-transform: none; }
+:root[data-skin="classical"] .marquee-separator { color: var(--sun); }
+:root[data-skin="classical"] .marketing-section-dark {
+  background: linear-gradient(135deg, var(--inverse), color-mix(in srgb, var(--violet) 36%, var(--inverse)));
+  border-block: 4px double var(--sun);
+}
+:root[data-skin="classical"] .section-heading { border-top: 4px double var(--edge-strong); }
+
+:root[data-skin="classical"] .steps-grid,
+:root[data-skin="classical"] .price-stack { gap: 16px; background: transparent; border: 0; }
+:root[data-skin="classical"] .step-card,
+:root[data-skin="classical"] .price-strip,
+:root[data-skin="classical"] .queue-demo {
+  border: 1px solid var(--edge-strong);
+  border-radius: 7px;
+  box-shadow: 0 5px 14px var(--shadow-ink);
+}
+
+:root[data-skin="classical"] .app-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sun) 12%, transparent), transparent 44%),
+    var(--sidebar);
+  border-right: 4px double var(--edge-strong);
+}
+:root[data-skin="classical"] .app-navigation a,
+:root[data-skin="classical"] .mobile-menu-navigation a { border-radius: 5px; font-family: Georgia, serif; text-transform: none; }
+:root[data-skin="classical"] .app-navigation a[aria-current="page"] {
+  color: var(--on-solid);
+  background: var(--solid);
+  border-color: var(--sun);
+}
+
+:root[data-skin="classical"] .panel,
+:root[data-skin="classical"] .settings-card,
+:root[data-skin="classical"] .stats-card,
+:root[data-skin="classical"] .theme-panel,
+:root[data-skin="classical"] .freeform-panel,
+:root[data-skin="classical"] .form-shell,
+:root[data-skin="classical"] .club-card,
+:root[data-skin="classical"] .playlist-card,
+:root[data-skin="classical"] .playlist-detail-hero,
+:root[data-skin="classical"] .playlist-version-card,
+:root[data-skin="classical"] .pricing-card,
+:root[data-skin="classical"] .chat-panel,
+:root[data-skin="classical"] .next-drop,
+:root[data-skin="classical"] .club-hero,
+:root[data-skin="classical"] .playlist-selector-dialog {
+  border: 1px solid var(--edge-strong);
+  border-radius: 7px;
+  box-shadow: 0 5px 14px var(--shadow-ink);
+}
+:root[data-skin="classical"] .club-card:hover,
+:root[data-skin="classical"] .playlist-card:hover { box-shadow: 0 8px 18px var(--shadow-ink); }
+:root[data-skin="classical"] .club-card-art,
+:root[data-skin="classical"] .playlist-cover,
+:root[data-skin="classical"] .playlist-detail-cover,
+:root[data-skin="classical"] .next-drop-art,
+:root[data-skin="classical"] .artwork-preview { border-radius: 5px; }
+
+:root[data-skin="classical"] .field label,
+:root[data-skin="classical"] .tiny-label,
+:root[data-skin="classical"] .theme-option,
+:root[data-skin="classical"] .theme-selector-hint { font-family: Georgia, "Times New Roman", serif; }
+:root[data-skin="classical"] .field input,
+:root[data-skin="classical"] .field textarea,
+:root[data-skin="classical"] .field select,
+:root[data-skin="classical"] .rich-text-shell,
+:root[data-skin="classical"] .color-field,
+:root[data-skin="classical"] .artwork-picker,
+:root[data-skin="classical"] .theme-current-toggle {
+  border-width: 1px;
+  border-radius: 5px;
+}
+:root[data-skin="classical"] .field input:focus,
+:root[data-skin="classical"] .field textarea:focus,
+:root[data-skin="classical"] .field select:focus,
+:root[data-skin="classical"] .rich-text-shell:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 38%, transparent); }
+
+:root[data-skin="classical"] .settings-card { box-shadow: inset 0 6px 0 var(--violet), 0 5px 14px var(--shadow-ink); }
+:root[data-skin="classical"] .settings-card:nth-child(2) { box-shadow: inset 0 6px 0 var(--sun), 0 5px 14px var(--shadow-ink); }
+:root[data-skin="classical"] .settings-card:nth-child(3) { box-shadow: inset 0 6px 0 var(--sky), 0 5px 14px var(--shadow-ink); }
+:root[data-skin="classical"] .settings-card:nth-child(4) { box-shadow: inset 0 6px 0 var(--orange), 0 5px 14px var(--shadow-ink); }
+:root[data-skin="classical"] .theme-selector {
+  gap: 4px;
+  padding: 4px;
+  background: var(--paper-deep);
+  border: 4px double var(--edge-strong);
+  border-radius: 7px;
+}
+:root[data-skin="classical"] .theme-option { border-radius: 4px; text-transform: none; }
+:root[data-skin="classical"] .theme-option[aria-pressed="true"] {
+  color: var(--on-solid);
+  background: var(--solid);
+  box-shadow: inset 0 -3px 0 var(--sun);
+}

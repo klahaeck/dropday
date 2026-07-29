@@ -1,0 +1,292 @@
+/*
+ * Dropday 70s — warm hi-fi furniture, record sleeves, and soft geometry.
+ *
+ * The complete component layout comes from skin-brutal.css. Every rule here is
+ * scoped to this skin and changes only its visual language.
+ */
+:root[data-skin="seventies"] {
+  color-scheme: light;
+  --font-sans: "Trebuchet MS";
+  --ink: #3d2117;
+  --paper: #f4e4bf;
+  --paper-deep: #dfbd7c;
+  --white: #fff8df;
+  --orange: #dd7141;
+  --orange-soft: #f3b77b;
+  --plan-accent-selector: var(--sun);
+  --green: #b0b65c;
+  --green-deep: #56620e;
+  --violet: #7b4761;
+  --sky: #4f9388;
+  --bubble: #d89574;
+  --sun: #e7b638;
+  --danger: #a72820;
+  --accent-1: var(--orange);
+  --accent-2: var(--green);
+  --accent-3: var(--sky);
+  --accent-4: var(--bubble);
+  --accent-5: var(--sun);
+  --accent-6: var(--violet);
+  --accent-ink: #30170f;
+  --accent-paper: #fff3cf;
+  --resident-unlimited-gradient: linear-gradient(115deg, var(--orange) 0 33%, var(--sun) 33% 66%, var(--green) 66% 100%);
+  --edge: rgba(61, 33, 23, 0.3);
+  --edge-strong: rgba(61, 33, 23, 0.48);
+  --accent-edge: rgba(48, 23, 15, 0.38);
+  --line: rgba(61, 33, 23, 0.16);
+  --shadow-ink: rgba(92, 48, 28, 0.28);
+  --shadow: 0 7px 0 var(--shadow-ink);
+  --inverse: #422419;
+  --on-inverse: #fff3cf;
+  --solid: #7d331f;
+  --on-solid: #fff8df;
+  --copy: #604235;
+  --muted: #765747;
+  --inverse-muted: #dbc59d;
+  --sidebar: #ead09a;
+  --surface-subtle: #f7e9c8;
+  --surface: #fff8df;
+  --surface-hover: rgba(125, 51, 31, 0.09);
+  --header-glass: color-mix(in srgb, var(--paper) 92%, transparent);
+  --focus: #2d716d;
+}
+
+:root[data-skin="seventies"][data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f8e7be;
+  --paper: #24150f;
+  --paper-deep: #493120;
+  --white: #332018;
+  --green-deep: #d1d979;
+  --danger: #ff8672;
+  --edge: rgba(248, 231, 190, 0.24);
+  --edge-strong: rgba(248, 231, 190, 0.4);
+  --line: rgba(248, 231, 190, 0.14);
+  --shadow-ink: rgba(0, 0, 0, 0.34);
+  --inverse: #140b08;
+  --on-inverse: #f8e7be;
+  --solid: #f2a65a;
+  --on-solid: #2a160e;
+  --copy: #dfc99e;
+  --muted: #c4aa80;
+  --inverse-muted: #c4aa80;
+  --sidebar: #2b1912;
+  --surface-subtle: #2b1912;
+  --surface: #332018;
+  --surface-hover: rgba(248, 231, 190, 0.1);
+  --header-glass: color-mix(in srgb, var(--paper) 92%, transparent);
+  --focus: #e7b638;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="seventies"]:not([data-theme]) {
+    color-scheme: dark;
+    --ink: #f8e7be;
+    --paper: #24150f;
+    --paper-deep: #493120;
+    --white: #332018;
+    --green-deep: #d1d979;
+    --danger: #ff8672;
+    --edge: rgba(248, 231, 190, 0.24);
+    --edge-strong: rgba(248, 231, 190, 0.4);
+    --line: rgba(248, 231, 190, 0.14);
+    --shadow-ink: rgba(0, 0, 0, 0.34);
+    --inverse: #140b08;
+    --on-inverse: #f8e7be;
+    --solid: #f2a65a;
+    --on-solid: #2a160e;
+    --copy: #dfc99e;
+    --muted: #c4aa80;
+    --inverse-muted: #c4aa80;
+    --sidebar: #2b1912;
+    --surface-subtle: #2b1912;
+    --surface: #332018;
+    --surface-hover: rgba(248, 231, 190, 0.1);
+    --header-glass: color-mix(in srgb, var(--paper) 92%, transparent);
+    --focus: #e7b638;
+  }
+}
+
+:root[data-skin="seventies"] body {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--orange) 15%, transparent) 0 8%, transparent 8.2%),
+    radial-gradient(circle at 88% 72%, color-mix(in srgb, var(--green) 14%, transparent) 0 11%, transparent 11.2%);
+  background-attachment: fixed;
+  font-family: var(--font-sans), Georgia, sans-serif;
+}
+
+:root[data-skin="seventies"] h1,
+:root[data-skin="seventies"] h2,
+:root[data-skin="seventies"] h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+:root[data-skin="seventies"] .brand-name {
+  font-style: italic;
+  letter-spacing: -0.045em;
+}
+
+:root[data-skin="seventies"] .button {
+  border-radius: 999px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.055em;
+  text-transform: none;
+}
+:root[data-skin="seventies"] .button:hover { box-shadow: 0 5px 0 var(--shadow-ink); }
+:root[data-skin="seventies"] .button-dark { background: var(--solid); border-color: var(--solid); }
+:root[data-skin="seventies"] .button-dark:hover { box-shadow: 0 5px 0 var(--sun); }
+
+:root[data-skin="seventies"] .pill,
+:root[data-skin="seventies"] .avatar,
+:root[data-skin="seventies"] .notification-icon,
+:root[data-skin="seventies"] .mobile-nav a,
+:root[data-skin="seventies"] .mobile-nav button,
+:root[data-skin="seventies"] .mobile-menu-close {
+  border-radius: 999px;
+}
+
+:root[data-skin="seventies"] .tiny-label,
+:root[data-skin="seventies"] .section-kicker,
+:root[data-skin="seventies"] .theme-option,
+:root[data-skin="seventies"] .theme-selector-hint {
+  font-family: var(--font-sans), sans-serif;
+}
+:root[data-skin="seventies"] .section-kicker { letter-spacing: 0.11em; }
+:root[data-skin="seventies"] .section-kicker:before {
+  width: 12px;
+  height: 12px;
+  background: var(--sun);
+  border: 3px solid var(--orange);
+  border-radius: 50%;
+}
+
+:root[data-skin="seventies"] .marketing-header {
+  border-bottom: 3px double var(--edge-strong);
+}
+:root[data-skin="seventies"] .marketing-nav { font-family: var(--font-sans), sans-serif; text-transform: none; }
+:root[data-skin="seventies"] .marketing-nav > a:not(.button):hover {
+  color: var(--accent-ink);
+  background: var(--sun);
+  border-radius: 999px;
+  box-shadow: 0 0 0 5px var(--sun);
+}
+
+:root[data-skin="seventies"] .hero h1 {
+  line-height: 0.9;
+  text-shadow: 5px 5px 0 color-mix(in srgb, var(--sun) 72%, transparent);
+}
+:root[data-skin="seventies"] .hero h1 em {
+  color: var(--orange);
+  font-style: italic;
+  -webkit-text-stroke: 0;
+}
+:root[data-skin="seventies"] .hero-note { font-family: var(--font-sans), sans-serif; text-transform: none; }
+:root[data-skin="seventies"] .hero-note:before { background: var(--green); border-radius: 50%; }
+:root[data-skin="seventies"] .vinyl {
+  box-shadow:
+    inset 0 0 0 13px var(--ink),
+    inset 0 0 0 14px var(--sun),
+    inset 0 0 0 34px var(--ink),
+    inset 0 0 0 35px var(--orange),
+    inset 0 0 0 55px var(--ink),
+    0 18px 0 var(--shadow-ink);
+}
+:root[data-skin="seventies"] .drop-ticket {
+  border-radius: 30px 30px 8px 8px;
+  box-shadow: 12px 15px 0 var(--green);
+  transform: rotate(-4deg);
+}
+:root[data-skin="seventies"] .ticket-art { border-radius: 24px 24px 6px 6px; background: var(--orange); }
+
+:root[data-skin="seventies"] .marquee {
+  background: var(--inverse);
+  border-block: 4px double var(--sun);
+}
+:root[data-skin="seventies"] .marquee-group { font-family: var(--font-sans), sans-serif; text-transform: none; }
+:root[data-skin="seventies"] .marquee-separator { color: var(--sun); }
+
+:root[data-skin="seventies"] .steps-grid,
+:root[data-skin="seventies"] .price-stack {
+  gap: 18px;
+  background: transparent;
+  border: 0;
+}
+:root[data-skin="seventies"] .step-card,
+:root[data-skin="seventies"] .price-strip {
+  border: 2px solid var(--edge);
+  border-radius: 34px 8px;
+  box-shadow: 0 7px 0 var(--shadow-ink);
+}
+:root[data-skin="seventies"] .queue-demo {
+  border-radius: 28px 8px;
+  box-shadow: 11px 11px 0 var(--sun);
+}
+
+:root[data-skin="seventies"] .app-sidebar {
+  background-color: var(--sidebar);
+  background-image: repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, var(--orange) 8%, transparent) 18px 36px);
+  border-right: 3px double var(--edge-strong);
+}
+:root[data-skin="seventies"] .app-navigation a,
+:root[data-skin="seventies"] .mobile-menu-navigation a { border-radius: 999px; }
+:root[data-skin="seventies"] .app-navigation a[aria-current="page"] {
+  color: var(--accent-ink);
+  background: var(--sun);
+  border-color: var(--edge-strong);
+}
+
+:root[data-skin="seventies"] .panel,
+:root[data-skin="seventies"] .settings-card,
+:root[data-skin="seventies"] .stats-card,
+:root[data-skin="seventies"] .theme-panel,
+:root[data-skin="seventies"] .freeform-panel,
+:root[data-skin="seventies"] .form-shell,
+:root[data-skin="seventies"] .club-card,
+:root[data-skin="seventies"] .playlist-card,
+:root[data-skin="seventies"] .playlist-detail-hero,
+:root[data-skin="seventies"] .playlist-version-card,
+:root[data-skin="seventies"] .pricing-card,
+:root[data-skin="seventies"] .chat-panel,
+:root[data-skin="seventies"] .next-drop,
+:root[data-skin="seventies"] .club-hero,
+:root[data-skin="seventies"] .playlist-selector-dialog {
+  border-radius: 24px 7px;
+  box-shadow: 0 7px 0 var(--shadow-ink);
+}
+:root[data-skin="seventies"] .club-card:hover,
+:root[data-skin="seventies"] .playlist-card:hover { box-shadow: 0 10px 0 var(--sun); }
+:root[data-skin="seventies"] .club-card-art,
+:root[data-skin="seventies"] .playlist-cover,
+:root[data-skin="seventies"] .playlist-detail-cover,
+:root[data-skin="seventies"] .next-drop-art,
+:root[data-skin="seventies"] .artwork-preview { border-radius: 20px 5px; }
+
+:root[data-skin="seventies"] .field input,
+:root[data-skin="seventies"] .field textarea,
+:root[data-skin="seventies"] .field select,
+:root[data-skin="seventies"] .rich-text-shell,
+:root[data-skin="seventies"] .color-field,
+:root[data-skin="seventies"] .artwork-picker,
+:root[data-skin="seventies"] .theme-current-toggle {
+  border-radius: 14px 4px;
+}
+:root[data-skin="seventies"] .field input:focus,
+:root[data-skin="seventies"] .field textarea:focus,
+:root[data-skin="seventies"] .field select:focus,
+:root[data-skin="seventies"] .rich-text-shell:focus-within { box-shadow: 0 4px 0 var(--focus); }
+
+:root[data-skin="seventies"] .settings-card { box-shadow: inset 0 9px 0 var(--accent-6), 0 7px 0 var(--shadow-ink); }
+:root[data-skin="seventies"] .settings-card:nth-child(2) { box-shadow: inset 0 9px 0 var(--accent-2), 0 7px 0 var(--shadow-ink); }
+:root[data-skin="seventies"] .settings-card:nth-child(3) { box-shadow: inset 0 9px 0 var(--accent-3), 0 7px 0 var(--shadow-ink); }
+:root[data-skin="seventies"] .settings-card:nth-child(4) { box-shadow: inset 0 9px 0 var(--accent-5), 0 7px 0 var(--shadow-ink); }
+:root[data-skin="seventies"] .theme-selector { gap: 6px; padding: 6px; background: var(--paper-deep); border-radius: 20px 6px; }
+:root[data-skin="seventies"] .theme-option { border-radius: 14px 4px; text-transform: none; }
+:root[data-skin="seventies"] .theme-option[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: var(--sun);
+}
