@@ -52,6 +52,7 @@ export async function getViewer(): Promise<Viewer | null> {
     primaryEmail: clerkUser.primaryEmailAddress?.emailAddress,
     plan,
     emailNotifications: existingProfile?.emailNotifications ?? true,
+    emailPreferences: existingProfile?.emailPreferences,
     themePreference: existingProfile?.themePreference ?? "system",
     skinPreference: existingProfile?.skinPreference ?? DEFAULT_SKIN,
     createdAt: existingProfile?.createdAt ?? new Date(clerkUser.createdAt).toISOString(),

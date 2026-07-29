@@ -12,6 +12,13 @@ export type PlaylistProvider = "spotify" | "apple-music";
 export type ThemePreference = "system" | "light" | "dark";
 /** Derived from the skin registry so adding a design only touches lib/skin.ts. */
 export type { SkinPreference };
+export type EmailPreferenceKey =
+  | "assignments"
+  | "reminders"
+  | "clubActivity"
+  | "membership"
+  | "billing";
+export type EmailPreferences = Record<EmailPreferenceKey, boolean>;
 export type NotificationKind =
   | "invitation"
   | "membership"
@@ -34,6 +41,7 @@ export interface UserProfile {
   primaryEmail?: string;
   plan: PlanKey;
   emailNotifications: boolean;
+  emailPreferences?: EmailPreferences;
   themePreference: ThemePreference;
   skinPreference: SkinPreference;
   createdAt: IsoDate;

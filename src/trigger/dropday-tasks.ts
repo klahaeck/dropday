@@ -44,8 +44,8 @@ export const sendDropReminderTask = task({
     const notificationInsert = await db.collection<Notification>("notifications")
       .updateOne({ id }, { $setOnInsert: notification }, { upsert: true });
     if (notificationInsert.upsertedCount === 1) await deliverBrowserNotification(notification);
-    if (user.primaryEmail && user.emailNotifications) await sendDropdayEmail({
-      to: user.primaryEmail, subject: notification.title, heading: "You’re almost up.", body: notification.body,
+    await sendDropdayEmail({
+      user, kind: notification.kind, subject: notification.title, heading: "You’re almost up.", body: notification.body,
       href: notification.href, idempotencyKey: id,
     });
     return { status: "sent", notificationId: id };
@@ -81,8 +81,8 @@ export const dispatchOutboxTask = task({
       };
       await db.collection<Notification>("notifications").insertOne(notification);
       await deliverBrowserNotification(notification);
-      if (user.primaryEmail && user.emailNotifications) await sendDropdayEmail({
-        to: user.primaryEmail, subject: title, heading: event.type === "drop.overdue" ? "The queue is waiting." : "Needle down.",
+      await sendDropdayEmail({
+        user, kind: notification.kind, subject: title, heading: event.type === "drop.overdue" ? "The queue is waiting." : "Needle down.",
         body, href: notification.href, idempotencyKey: `${event.idempotencyKey}:${user.id}`,
       });
     }
