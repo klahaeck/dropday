@@ -156,16 +156,21 @@ export function MobileAppHeader({
             <div className="sidebar-spacer" />
             {isDemo && (
               <div className="demo-note">
-                <span className="status-dot" /> Demo mode<br />
-                <small>Add service keys to go live.</small>
+                <span className="status-dot" />
+                <span className="demo-note-copy">
+                  Demo mode<br />
+                  <small>Add service keys to go live.</small>
+                </span>
               </div>
             )}
             <Link href="/app/settings" className="sidebar-settings" onClick={() => closeMenu()}>
               <Settings size={17} /> Settings
             </Link>
             <div className="sidebar-user">
-              {clerkEnabled ? <ClerkUserMenu enabled /> : <Avatar user={user} />}
-              <div>
+              <div className="sidebar-user-avatar">
+                {clerkEnabled ? <ClerkUserMenu enabled /> : <Avatar user={user} />}
+              </div>
+              <div className="sidebar-user-details">
                 <strong>{user.displayName}</strong>
                 <span>{user.plan === "free" ? "Free member" : `${user.plan} plan`}</span>
               </div>

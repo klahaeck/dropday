@@ -394,24 +394,54 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .demo-auth-card h2 { font-size: 34px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .demo-auth-card p { color: var(--muted); }
 
-:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell { min-height: 100vh; display: grid; grid-template-columns: 250px minmax(0, 1fr); }
-:root:is(:not([data-skin]), [data-skin="classic"]) .app-sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 26px 20px 20px; border-right: 1px solid var(--line); background: var(--sidebar); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell { min-height: 100vh; display: grid; grid-template-columns: 250px minmax(0, 1fr); transition: grid-template-columns 200ms ease; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] { grid-template-columns: 76px minmax(0, 1fr); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 26px 20px 20px; overflow: hidden; border-right: 1px solid var(--line); background: var(--sidebar); transition: padding 200ms ease; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-content { min-height: 0; display: flex; flex: 1; flex-direction: column; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-footer { display: grid; gap: 12px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-menu { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-menu-item { min-width: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-menu-button { width: 100%; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-menu-badge { display: flex; margin-left: auto; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-button { display: inline-flex; align-items: center; justify-content: center; color: inherit; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-button-default-size { min-height: 40px; padding: 0 14px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-button-icon { width: 36px; height: 36px; flex: 0 0 auto; padding: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-button-ghost:hover { background: var(--surface-hover); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-button:focus-visible, :root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-menu-button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-tooltip-content { z-index: 60; padding: 7px 10px; color: var(--on-inverse); background: var(--inverse); border-radius: 6px; box-shadow: var(--shadow); font-size: 12px; font-weight: 700; line-height: 1; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-tooltip-arrow { fill: var(--inverse); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .app-navigation { display: grid; gap: 4px; margin: 40px 0 22px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .app-navigation a, :root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-settings { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 6px; font-weight: 680; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .app-navigation a:hover, :root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-settings:hover { background: var(--surface-hover); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .notification-badge { min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; margin-left: auto; padding: 0 6px; color: var(--accent-ink); background: var(--orange); border-radius: 999px; font-size: 11px; font-weight: 850; line-height: 1; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-spacer { flex: 1; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .demo-note { margin: 16px 0; padding: 12px; font-size: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-subtle); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .demo-note { display: flex; align-items: flex-start; margin: 16px 0; padding: 12px; font-size: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-subtle); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .demo-note small { color: var(--muted); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .status-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; background: var(--green-deep); border-radius: 50%; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
-:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user > div strong, :root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user > div span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user > div strong { font-size: 13px; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user > div span { color: var(--muted); font-size: 11px; text-transform: capitalize; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user-details { min-width: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user-details strong, :root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user-details > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user-details strong { font-size: 13px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .sidebar-user-details > span { color: var(--muted); font-size: 11px; text-transform: capitalize; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar { padding-right: 17px; padding-left: 18px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .sidebar-header { flex-direction: column; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar :is(.brand-name, .sidebar-menu-label, .sidebar-user-details, .demo-note-copy) { display: none; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar .app-navigation { margin-top: 28px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar :is(.app-navigation a, .sidebar-settings) { position: relative; width: 40px; min-height: 40px; justify-content: center; gap: 0; padding: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar .sidebar-menu-badge { position: absolute; top: -5px; right: -5px; margin: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar .notification-badge { min-width: 17px; height: 17px; margin: 0; padding: 0 4px; font-size: 9px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar .demo-note { width: 40px; height: 40px; align-items: center; justify-content: center; padding: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar .status-dot { width: 9px; height: 9px; margin: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .app-shell[data-state="collapsed"] .app-sidebar .sidebar-user { display: flex; justify-content: center; gap: 0; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .app-main { min-width: 0; padding: 34px 42px 80px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .app-main-inner { max-width: 1320px; margin: auto; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .mobile-app-header { display: none; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .mobile-menu-layer { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root:is(:not([data-skin]), [data-skin="classic"]) :is(.app-shell, .app-sidebar) { transition: none; }
+}
 
 :root:is(:not([data-skin]), [data-skin="classic"]) .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 38px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .page-header h1 { margin: 4px 0 0; font-family: Georgia, serif; font-size: clamp(48px, 5vw, 68px); font-weight: 500; }
@@ -743,6 +773,25 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .member-queue-toggle-paused { color: var(--accent-ink); background: var(--orange-soft); border-color: var(--ink); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .member-order-feedback { min-height: 17px; margin: 8px 0 0; color: var(--muted); font-size: 12px; }
 
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-group { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble { position: relative; width: fit-content; max-width: 80%; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-end { align-items: flex-end; margin-inline-start: auto; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-content { width: fit-content; max-width: 100%; min-width: 0; padding: 8px 12px; overflow: hidden; color: var(--ink); background: var(--paper); border: 1px solid transparent; border-radius: 12px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-default > .ui-bubble-content { color: var(--accent-ink); background: var(--orange); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-secondary > .ui-bubble-content { color: var(--ink); background: var(--paper); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-muted > .ui-bubble-content { color: var(--muted); background: var(--surface-subtle); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-tinted > .ui-bubble-content { color: var(--accent-ink); background: var(--orange-soft); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-outline > .ui-bubble-content { color: var(--ink); background: var(--white); border-color: var(--line); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-ghost { max-width: 100%; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-ghost > .ui-bubble-content { width: 100%; padding: 0; color: var(--ink); background: transparent; border: 0; border-radius: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-destructive > .ui-bubble-content { color: var(--danger, #b42318); background: color-mix(in srgb, var(--danger, #b42318) 12%, var(--white)); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-reactions { position: absolute; z-index: 2; display: flex; width: fit-content; align-items: center; justify-content: center; gap: 4px; padding: 2px 6px; color: var(--ink); background: var(--paper); border-radius: 999px; box-shadow: 0 0 0 3px var(--white); font-size: 12px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-reactions:has(button) { padding: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-reactions-top { top: 0; transform: translateY(-75%); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-reactions-bottom { bottom: 0; transform: translateY(75%); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-reactions-start { left: 12px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .ui-bubble-reactions-end { right: 12px; }
+
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-panel { height: min(700px, calc(100vh - 110px)); min-height: 540px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); overflow: hidden; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid var(--line); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-header h2 { margin: 0; font-size: 24px; }
@@ -753,20 +802,20 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-avatar { display: grid; width: 34px; height: 34px; place-items: center; color: var(--on-solid); background: var(--solid); border-radius: 50%; font-size: 9px; font-weight: 850; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-byline { display: flex; align-items: baseline; gap: 8px; margin: 0 0 5px; font-size: 12px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-byline time { color: var(--muted); font-size: 9px; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .chat-body { display: inline-block; margin: 0; padding: 9px 11px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--paper); border-radius: 3px 8px 8px 8px; font-size: 13px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .chat-body { text-align: left; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-mention { font-weight: 850; text-decoration: underline; text-decoration-color: var(--orange); text-underline-offset: 2px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-message-mine { grid-template-columns: minmax(0, 1fr); padding-left: 45px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-message-mine > div { grid-column: 1; text-align: right; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .chat-message-mine .chat-byline, :root:is(:not([data-skin]), [data-skin="classic"]) .chat-message-mine .reaction-row { justify-content: flex-end; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .chat-message-mine .chat-body { max-width: 88%; color: var(--accent-ink); text-align: left; background: var(--orange-soft); border-radius: 8px 3px 8px 8px; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .chat-panel-club .chat-body { color: var(--ink); background: color-mix(in srgb, var(--club-accent, var(--orange)) 12%, var(--paper)); }
-:root:is(:not([data-skin]), [data-skin="classic"]) .chat-panel-club .chat-message-mine .chat-body { background: color-mix(in srgb, var(--club-accent, var(--orange)) 28%, var(--paper)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--club-accent, var(--orange)) 42%, transparent); }
-:root:is(:not([data-skin]), [data-skin="classic"]) .reaction-row { display: flex; gap: 5px; margin-top: 5px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .chat-message-mine .chat-byline { justify-content: flex-end; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .chat-panel-club .ui-bubble-secondary > .ui-bubble-content { color: var(--ink); background: color-mix(in srgb, var(--club-accent, var(--orange)) 12%, var(--paper)); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .chat-panel-club .ui-bubble-default > .ui-bubble-content { color: var(--club-accent-ink, var(--accent-ink)); background: var(--club-accent, var(--orange)); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .chat-bubble { margin-bottom: 18px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .reaction-row { gap: 3px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .reaction-row button, :root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker summary { display: inline-grid; min-width: 27px; height: 25px; place-items: center; padding: 0 7px; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; background: var(--white); cursor: pointer; font-size: 11px; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker { position: relative; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .reaction-row button:hover, :root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker summary:hover { background: var(--surface-hover); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker summary { list-style: none; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker > span { position: absolute; z-index: 4; bottom: 30px; display: flex; gap: 3px; padding: 5px; background: var(--white); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); }
-:root:is(:not([data-skin]), [data-skin="classic"]) .chat-message-mine .reaction-picker > span { right: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker[open] { display: flex; align-items: center; gap: 3px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker[open] > span { display: flex; gap: 3px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .typing-line { min-height: 24px; padding: 2px 20px; color: var(--muted); font-size: 10px; font-style: italic; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-composer { position: relative; display: grid; grid-template-columns: 1fr 40px; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-composer input { min-width: 0; padding: 11px 13px; color: var(--ink); caret-color: var(--ink); border: 1px solid var(--line); border-radius: 8px; background: var(--paper); outline: none; }

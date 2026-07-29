@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Send, SmilePlus, Users } from "lucide-react";
+import { Bubble, BubbleContent, BubbleReactions } from "@/components/ui/bubble";
 import {
   filterMentionCandidates,
   findMentionQuery,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/chat-mentions";
 import { reconcileSentMessage } from "@/lib/chat-messages";
 import { toggleChatReaction } from "@/lib/chat-reactions";
-import { normalizeClubAccent } from "@/lib/club-accent";
+import { getClubAccentForeground, normalizeClubAccent } from "@/lib/club-accent";
 import type { ChatMessage } from "@/types/domain";
 
 const quickReactions = ["🔥", "💿", "❤️", "🫡"];
@@ -223,7 +224,10 @@ export function ChatPanel({
   }
 
   return (
-    <section className={`chat-panel${threadType === "club" ? " chat-panel-club" : ""}`} style={threadType === "club" ? { "--club-accent": normalizeClubAccent(clubAccent) } as React.CSSProperties : undefined}>
+    <section className={`chat-panel${threadType === "club" ? " chat-panel-club" : ""}`} style={threadType === "club" ? {
+      "--club-accent": normalizeClubAccent(clubAccent),
+      "--club-accent-ink": getClubAccentForeground(clubAccent),
+    } as React.CSSProperties : undefined}>
       <header className="chat-header">
         <div><span className="section-kicker">Live room</span><h2>{threadType === "club" ? "Club chat" : "Drop chat"}</h2></div>
         <span className="presence"><Users size={14} /> {onlineCount} here</span>
@@ -238,18 +242,46 @@ export function ChatPanel({
               <div>
                 <p className="chat-byline">
                   {isCurrentUser ? <span className="sr-only">You</span> : <strong>{message.authorName}</strong>}
-                  <time>{formattedTime}</time>
+                  <time dateTime={message.createdAt}>{formattedTime}</time>
                 </p>
-                <p className="chat-body">{message.deletedAt ? "Message removed" : renderMessageBody(message.body, mentionableUsers)}</p>
-                <div className="reaction-row">
-                  {message.reactions.filter((reaction) => reaction.userIds.length).map((reaction) => (
-                    <button type="button" onClick={() => react(message.id, reaction.emoji)} key={reaction.emoji}>{reaction.emoji} {reaction.userIds.length}</button>
-                  ))}
-                  <details className="reaction-picker"><summary><SmilePlus size={14} /></summary><span>{quickReactions.map((emoji) => <button type="button" key={emoji} onClick={(event) => {
-                    react(message.id, emoji);
-                    event.currentTarget.closest("details")?.removeAttribute("open");
-                  }}>{emoji}</button>)}</span></details>
-                </div>
+                <Bubble
+                  align={isCurrentUser ? "end" : "start"}
+                  className="chat-bubble"
+                  variant={isCurrentUser ? "default" : "secondary"}
+                >
+                  <BubbleContent className="chat-body">
+                    {message.deletedAt ? "Message removed" : renderMessageBody(message.body, mentionableUsers)}
+                  </BubbleContent>
+                  <BubbleReactions
+                    align={isCurrentUser ? "end" : "start"}
+                    aria-label="Message reactions"
+                    className="reaction-row"
+                    role="group"
+                  >
+                    {message.reactions.filter((reaction) => reaction.userIds.length).map((reaction) => (
+                      <button
+                        type="button"
+                        aria-label={`${reaction.userIds.includes(currentUser.id) ? "Remove" : "Add"} ${reaction.emoji} reaction; ${reaction.userIds.length} ${reaction.userIds.length === 1 ? "reaction" : "reactions"}`}
+                        onClick={() => react(message.id, reaction.emoji)}
+                        key={reaction.emoji}
+                      >
+                        {reaction.emoji} {reaction.userIds.length}
+                      </button>
+                    ))}
+                    <details className="reaction-picker">
+                      <summary aria-label="Add reaction"><SmilePlus size={14} /></summary>
+                      <span>{quickReactions.map((emoji) => <button
+                        type="button"
+                        aria-label={`React with ${emoji}`}
+                        key={emoji}
+                        onClick={(event) => {
+                          react(message.id, emoji);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}
+                      >{emoji}</button>)}</span>
+                    </details>
+                  </BubbleReactions>
+                </Bubble>
               </div>
             </article>
           );
