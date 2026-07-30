@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLASSIC_ONLY_SKIN_ROUTES,
+  CUSTOM_SKIN_PATH_PREFIX,
   DEFAULT_SKIN,
   isClassicOnlySkinPath,
   isSkinPreference,
@@ -45,14 +45,20 @@ describe("skin preferences", () => {
     expect(resolveSkinPreference("classical")).toBe("classic");
   });
 
-  it("uses the classic design throughout sign-in and sign-up routes", () => {
-    expect(CLASSIC_ONLY_SKIN_ROUTES).toEqual(["/sign-in", "/sign-up"]);
+  it("uses saved designs only within the application route tree", () => {
+    expect(CUSTOM_SKIN_PATH_PREFIX).toBe("/app");
+    expect(isClassicOnlySkinPath("/")).toBe(true);
+    expect(isClassicOnlySkinPath("/pricing")).toBe(true);
+    expect(isClassicOnlySkinPath("/privacy")).toBe(true);
     expect(isClassicOnlySkinPath("/sign-in")).toBe(true);
     expect(isClassicOnlySkinPath("/sign-in/factor-one")).toBe(true);
     expect(isClassicOnlySkinPath("/sign-up")).toBe(true);
     expect(isClassicOnlySkinPath("/sign-up/verify-email-address")).toBe(true);
-    expect(isClassicOnlySkinPath("/sign-invitation")).toBe(false);
     expect(isClassicOnlySkinPath("/app")).toBe(false);
+    expect(isClassicOnlySkinPath("/app/")).toBe(false);
+    expect(isClassicOnlySkinPath("/app/settings")).toBe(false);
+    expect(isClassicOnlySkinPath("/application")).toBe(true);
+    expect(isClassicOnlySkinPath("/appetite")).toBe(true);
   });
 
   it("describes every registered skin", () => {

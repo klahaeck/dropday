@@ -5,7 +5,7 @@ import { AuthProvider } from "@/components/clerk-ui";
 import { SkinProvider } from "@/components/skin-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import {
-  CLASSIC_ONLY_SKIN_ROUTES,
+  CUSTOM_SKIN_PATH_PREFIX,
   DEFAULT_SKIN,
   SKIN_IDS,
   SKIN_STORAGE_KEY,
@@ -100,13 +100,12 @@ const appearanceBootScript = `
       }
       var skin = localStorage.getItem(${JSON.stringify(SKIN_STORAGE_KEY)});
       var known = ${JSON.stringify(SKIN_IDS)};
-      var classicOnlyRoutes = ${JSON.stringify(CLASSIC_ONLY_SKIN_ROUTES)};
-      var classicOnly = classicOnlyRoutes.some(function (route) {
-        return window.location.pathname === route || window.location.pathname.indexOf(route + "/") === 0;
-      });
+      var customSkinPath = ${JSON.stringify(CUSTOM_SKIN_PATH_PREFIX)};
+      var usesCustomSkin = window.location.pathname === customSkinPath
+        || window.location.pathname.indexOf(customSkinPath + "/") === 0;
       root.setAttribute(
         "data-skin",
-        classicOnly || known.indexOf(skin) === -1 ? ${JSON.stringify(DEFAULT_SKIN)} : skin
+        !usesCustomSkin || known.indexOf(skin) === -1 ? ${JSON.stringify(DEFAULT_SKIN)} : skin
       );
     } catch (_) {}
   })();

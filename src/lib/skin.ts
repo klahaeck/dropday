@@ -39,17 +39,16 @@ export const SKIN_IDS: readonly SkinPreference[] = SKINS.map((skin) => skin.id);
 /** The original Dropday look. Anything else is opt-in. */
 export const DEFAULT_SKIN: SkinPreference = "classic";
 
-/** Routes that always use the original design without changing the saved preference. */
-export const CLASSIC_ONLY_SKIN_ROUTES = ["/sign-in", "/sign-up"] as const;
+/** The only route tree where a saved alternate design is displayed. */
+export const CUSTOM_SKIN_PATH_PREFIX = "/app";
 
 export function isSkinPreference(value: unknown): value is SkinPreference {
   return SKIN_IDS.some((id) => id === value);
 }
 
 export function isClassicOnlySkinPath(pathname: string): boolean {
-  return CLASSIC_ONLY_SKIN_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
+  return pathname !== CUSTOM_SKIN_PATH_PREFIX
+    && !pathname.startsWith(`${CUSTOM_SKIN_PATH_PREFIX}/`);
 }
 
 export function resolveSkinPreference(value: unknown): SkinPreference {
