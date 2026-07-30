@@ -794,12 +794,11 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-members-header p { max-width: 720px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-members-header > .tiny-label { flex: 0 0 auto; margin-top: 9px; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-member-list { display: grid; border-top: 2px solid var(--edge); }
-:root:where([data-skin]:not([data-skin="classic"])) .club-member-row { min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto minmax(138px, auto); gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+:root:where([data-skin]:not([data-skin="classic"])) .club-member-row { min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto minmax(240px, auto); gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
 :root:where([data-skin]:not([data-skin="classic"])) .club-member-identity { min-width: 0; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-member-identity strong, :root:where([data-skin]:not([data-skin="classic"])) .club-member-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-member-identity small { margin-top: 3px; color: var(--muted); font-family: var(--font-mono), ui-monospace, monospace; font-size: 9px; letter-spacing: .03em; text-transform: uppercase; }
-:root:where([data-skin]:not([data-skin="classic"])) .club-member-action { min-width: 138px; display: flex; justify-content: flex-end; }
-:root:where([data-skin]:not([data-skin="classic"])) .club-member-action .button { min-width: 132px; }
+:root:where([data-skin]:not([data-skin="classic"])) .club-member-action { min-width: 240px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-member-owner-label { color: var(--muted); font-family: var(--font-mono), ui-monospace, monospace; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-members-feedback { min-height: 17px; margin: 12px 0 0; color: var(--muted); font-size: 12px; }
 :root:where([data-skin]:not([data-skin="classic"])) .club-admin-queue-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 18px; }

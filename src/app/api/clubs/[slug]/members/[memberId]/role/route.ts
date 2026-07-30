@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
 import {
-  buildClubAdminPromotionNotification,
+  buildClubRolePromotionNotification,
   ClubMemberRoleError,
   planClubMemberRoleChange,
   type AssignableClubRole,
@@ -10,19 +10,37 @@ import {
 import { deliverBrowserNotification } from "@/lib/browser-push";
 import { getDb, getMongoClient } from "@/lib/db";
 import { demoNotifications } from "@/lib/demo-data";
+import { getOwnershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
-import { createId, getClubBySlug, getClubMemberships } from "@/lib/repository";
-import type { Club, ClubMembership, Notification } from "@/types/domain";
+import {
+  countOwnedClubs,
+  createId,
+  getClubBySlug,
+  getClubMemberships,
+  getUserProfile,
+} from "@/lib/repository";
+import type {
+  Club,
+  ClubMembership,
+  Notification,
+  UserProfile,
+} from "@/types/domain";
 
 const schema = z.object({
-  role: z.enum(["admin", "member"]),
-});
+  role: z.enum(["owner", "admin", "member"]),
+  transferOwnership: z.boolean().optional().default(false),
+}).refine(
+  (value) => !value.transferOwnership || value.role === "owner",
+  { message: "Ownership can only be transferred to an owner." },
+);
 
 type RoleUpdateResult = {
   status: number;
   error?: string;
   memberId?: string;
   role?: AssignableClubRole;
+  actorRole?: AssignableClubRole;
+  primaryOwnerId?: string;
 };
 
 export async function PATCH(
@@ -50,21 +68,50 @@ export async function PATCH(
 
   if (!integrations.mongo) {
     try {
+      const targetMembership = memberships.find(
+        (membership) => membership.userId === memberId,
+      );
+      let targetCanOwnAnotherClub = true;
+      if (parsed.data.role === "owner" && targetMembership?.role !== "owner") {
+        const [targetProfile, ownedClubCount] = await Promise.all([
+          getUserProfile(memberId),
+          countOwnedClubs(memberId),
+        ]);
+        targetCanOwnAnotherClub = Boolean(
+          targetProfile
+          && targetProfile.plan !== "free"
+          && getOwnershipEntitlement(targetProfile.plan, ownedClubCount).canOwnAnotherClub,
+        );
+      }
       const result = planClubMemberRoleChange({
         actorMembership: memberships.find((membership) => membership.userId === profile.id),
-        targetMembership: memberships.find((membership) => membership.userId === memberId),
+        targetMembership,
         activeOwnerId: club.custody.activeOwnerId,
+        custodyStatus: club.custody.status,
+        canChangeOwnership: features.ownershipTransfer,
+        targetCanOwnAnotherClub,
+        transferOwnership: parsed.data.transferOwnership,
         role: parsed.data.role,
         timestamp,
       });
       if (result.changed) {
+        const previousRole = targetMembership?.role ?? "member";
         const target = memberships.find((membership) => membership.id === result.membership.id);
         if (target) Object.assign(target, result.membership);
+        if (result.actorMembership) {
+          const actor = memberships.find(
+            (membership) => membership.id === result.actorMembership?.id,
+          );
+          if (actor) Object.assign(actor, result.actorMembership);
+        }
         club.updatedAt = timestamp;
-        const notification = buildClubAdminPromotionNotification({
+        club.custody.activeOwnerId = result.primaryOwnerId;
+        const notification = buildClubRolePromotionNotification({
           club,
           membership: result.membership,
+          previousRole,
           changed: result.changed,
+          ownershipTransfer: parsed.data.transferOwnership,
           notificationId: createId("notification"),
           timestamp,
         });
@@ -73,6 +120,10 @@ export async function PATCH(
       return NextResponse.json({
         memberId: result.membership.userId,
         role: result.membership.role,
+        ...(result.actorMembership
+          ? { actorRole: result.actorMembership.role }
+          : {}),
+        primaryOwnerId: result.primaryOwnerId,
         demo: true,
       });
     } catch (error) {
@@ -115,12 +166,49 @@ export async function PATCH(
       const currentActor = currentMemberships.find((membership) => membership.userId === profile.id);
       const currentTarget = currentMemberships.find((membership) => membership.userId === memberId);
 
+      let targetCanOwnAnotherClub = true;
+      if (parsed.data.role === "owner" && currentTarget?.role !== "owner") {
+        const [targetProfile, ownerMemberships] = await Promise.all([
+          db.collection<UserProfile>("users").findOne(
+            { id: memberId },
+            { session },
+          ),
+          db.collection<ClubMembership>("memberships")
+            .find(
+              { userId: memberId, role: "owner", status: "active" },
+              { session },
+            )
+            .toArray(),
+        ]);
+        const ownedClubCount = ownerMemberships.length
+          ? await db.collection<Club>("clubs").countDocuments(
+            {
+              id: { $in: ownerMemberships.map((membership) => membership.clubId) },
+              "custody.status": "active",
+            },
+            { session },
+          )
+          : 0;
+        targetCanOwnAnotherClub = Boolean(
+          targetProfile
+          && targetProfile.plan !== "free"
+          && getOwnershipEntitlement(
+            targetProfile.plan,
+            ownedClubCount,
+          ).canOwnAnotherClub,
+        );
+      }
+
       let planned;
       try {
         planned = planClubMemberRoleChange({
           actorMembership: currentActor,
           targetMembership: currentTarget,
           activeOwnerId: currentClub.custody.activeOwnerId,
+          custodyStatus: currentClub.custody.status,
+          canChangeOwnership: features.ownershipTransfer,
+          targetCanOwnAnotherClub,
+          transferOwnership: parsed.data.transferOwnership,
           role: parsed.data.role,
           timestamp,
         });
@@ -138,13 +226,23 @@ export async function PATCH(
           status: 200,
           memberId: planned.membership.userId,
           role: parsed.data.role,
+          primaryOwnerId: planned.primaryOwnerId,
         };
         return;
       }
 
       const clubUpdate = await db.collection<Club>("clubs").updateOne(
-        { id: currentClub.id, "custody.activeOwnerId": profile.id },
-        { $set: { updatedAt: timestamp } },
+        {
+          id: currentClub.id,
+          "custody.status": "active",
+          "custody.activeOwnerId": currentClub.custody.activeOwnerId,
+        },
+        {
+          $set: {
+            updatedAt: timestamp,
+            "custody.activeOwnerId": planned.primaryOwnerId,
+          },
+        },
         { session },
       );
       const membershipUpdate = await db.collection<ClubMembership>("memberships").updateOne(
@@ -161,11 +259,70 @@ export async function PATCH(
       if (!clubUpdate.matchedCount || !membershipUpdate.matchedCount) {
         throw new Error("Club role state changed during the update");
       }
+      if (planned.actorMembership) {
+        if (!currentActor) throw new Error("Role plan did not resolve an acting owner");
+        const actorUpdate = await db.collection<ClubMembership>("memberships").updateOne(
+          {
+            id: currentActor.id,
+            clubId: currentClub.id,
+            userId: profile.id,
+            role: currentActor.role,
+            status: "active",
+          },
+          {
+            $set: {
+              role: planned.actorMembership.role,
+              updatedAt: timestamp,
+            },
+          },
+          { session },
+        );
+        if (!actorUpdate.matchedCount) {
+          throw new Error("Club owner state changed during the transfer");
+        }
+        await db.collection("auditEvents").insertOne(
+          {
+            id: createId("audit"),
+            clubId: currentClub.id,
+            actorUserId: profile.id,
+            action: "ownership.transferred",
+            metadata: {
+              fromUserId: profile.id,
+              toUserId: planned.membership.userId,
+            },
+            createdAt: timestamp,
+          },
+          { session },
+        );
+      } else if (
+        currentTarget.role === "owner"
+        || planned.membership.role === "owner"
+      ) {
+        await db.collection("auditEvents").insertOne(
+          {
+            id: createId("audit"),
+            clubId: currentClub.id,
+            actorUserId: profile.id,
+            action: planned.membership.role === "owner"
+              ? "ownership.co-owner-added"
+              : "ownership.co-owner-removed",
+            metadata: {
+              memberUserId: planned.membership.userId,
+              previousRole: currentTarget.role,
+              nextRole: planned.membership.role,
+            },
+            createdAt: timestamp,
+          },
+          { session },
+        );
+      }
 
-      browserNotification = buildClubAdminPromotionNotification({
+      browserNotification = buildClubRolePromotionNotification({
         club: currentClub,
         membership: planned.membership,
+        previousRole: currentTarget.role,
         changed: planned.changed,
+        ownershipTransfer: parsed.data.transferOwnership,
         notificationId: createId("notification"),
         timestamp,
       });
@@ -180,6 +337,8 @@ export async function PATCH(
         status: 200,
         memberId: planned.membership.userId,
         role: parsed.data.role,
+        actorRole: planned.actorMembership?.role,
+        primaryOwnerId: planned.primaryOwnerId,
       };
     }));
   } catch {
@@ -195,6 +354,10 @@ export async function PATCH(
       ...(outcome.error ? { error: outcome.error } : {}),
       ...(outcome.memberId ? { memberId: outcome.memberId } : {}),
       ...(outcome.role ? { role: outcome.role } : {}),
+      ...(outcome.actorRole ? { actorRole: outcome.actorRole } : {}),
+      ...(outcome.primaryOwnerId
+        ? { primaryOwnerId: outcome.primaryOwnerId }
+        : {}),
     },
     { status: outcome.status },
   );

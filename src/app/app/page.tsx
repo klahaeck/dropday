@@ -11,20 +11,20 @@ import { canViewDropContent } from "@/lib/drop-visibility";
 import { getMembershipEntitlement, getOwnershipEntitlement } from "@/lib/entitlements";
 import { formatDateTime } from "@/lib/format";
 import {
-  countActiveMemberships,
   countOwnedClubs,
   getClubDrops,
   getUserProfile,
+  listActiveMembershipsForUser,
   listClubsForUser,
   listNotifications,
 } from "@/lib/repository";
 
 export default async function DashboardPage() {
   const { profile, features } = await requireViewer();
-  const [clubs, notifications, membershipCount, ownedCount] = await Promise.all([
+  const [clubs, notifications, activeMemberships, ownedCount] = await Promise.all([
     listClubsForUser(profile.id),
     listNotifications(profile.id),
-    countActiveMemberships(profile.id),
+    listActiveMembershipsForUser(profile.id),
     countOwnedClubs(profile.id),
   ]);
   const drops = (await Promise.all(clubs.map((club) => getClubDrops(club.id)))).flat();
@@ -33,8 +33,15 @@ export default async function DashboardPage() {
   const assignmentPlaylist = assignment && canViewDropContent(assignment, profile.id)
     ? assignment.playlist
     : undefined;
-  const membership = getMembershipEntitlement(profile.plan, membershipCount, features.unlimitedMemberships);
+  const membership = getMembershipEntitlement(
+    profile.plan,
+    activeMemberships.length,
+    features.unlimitedMemberships,
+  );
   const ownership = getOwnershipEntitlement(profile.plan, ownedCount);
+  const membershipsByClubId = new Map(
+    activeMemberships.map((item) => [item.clubId, item]),
+  );
   const assignedUser = assignment ? await getUserProfile(assignment.assignedUserId) : null;
   const assignmentTheme = assignmentClub?.currentTheme;
 
@@ -58,7 +65,7 @@ export default async function DashboardPage() {
     </section>}
 
     <div className="section-title-row"><h2>Your clubs</h2><Link href="/app/clubs">View all</Link></div>
-    <div className="club-grid">{clubs.slice(0, 3).map((club) => <ClubCard key={club.id} club={club} membershipLabel={club.custody.activeOwnerId === profile.id ? "owner" : "member"} />)}</div>
+    <div className="club-grid">{clubs.slice(0, 3).map((club) => <ClubCard key={club.id} club={club} membershipLabel={membershipsByClubId.get(club.id)?.role === "owner" ? "owner" : "member"} />)}</div>
 
     <div className="section-title-row"><h2>Activity</h2><Link href="/app/notifications">All notifications</Link></div>
     <div className="notification-list">{notifications.slice(0, 3).map((item) => <Link href={item.href ?? "/app/notifications"} className={`notification-item ${item.readAt ? "" : "notification-unread"}`} key={item.id}><span className="notification-icon">{item.kind === "membership" ? <UsersRound size={18} /> : <Bell size={18} />}</span><div><h3>{item.title}</h3><p>{item.body}</p></div><time>{new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(-1, "day")}</time></Link>)}</div>

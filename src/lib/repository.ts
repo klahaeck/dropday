@@ -27,13 +27,24 @@ import type {
 } from "@/types/domain";
 
 export async function listClubsForUser(userId: string): Promise<Club[]> {
-  if (!integrations.mongo) {
-    const clubIds = demoMemberships.filter((item) => item.userId === userId && item.status === "active").map((item) => item.clubId);
-    return demoClubs.filter((club) => clubIds.includes(club.id));
-  }
+  const memberships = await listActiveMembershipsForUser(userId);
+  const clubIds = memberships.map((membership) => membership.clubId);
+  if (!integrations.mongo) return demoClubs.filter((club) => clubIds.includes(club.id));
   const db = await getDb();
-  const memberships = await db.collection<ClubMembership>("memberships").find({ userId, status: "active" }).toArray();
-  return db.collection<Club>("clubs").find({ id: { $in: memberships.map((item) => item.clubId) } }).toArray();
+  return db.collection<Club>("clubs").find({ id: { $in: clubIds } }).toArray();
+}
+
+export async function listActiveMembershipsForUser(
+  userId: string,
+): Promise<ClubMembership[]> {
+  if (!integrations.mongo) {
+    return demoMemberships.filter(
+      (membership) => membership.userId === userId && membership.status === "active",
+    );
+  }
+  return (await getDb()).collection<ClubMembership>("memberships")
+    .find({ userId, status: "active" })
+    .toArray();
 }
 
 export async function listPublicClubs(): Promise<Club[]> {
@@ -241,8 +252,19 @@ export async function countActiveMemberships(userId: string): Promise<number> {
 }
 
 export async function countOwnedClubs(userId: string): Promise<number> {
-  if (!integrations.mongo) return demoClubs.filter((club) => club.custody.activeOwnerId === userId).length;
-  return (await getDb()).collection<Club>("clubs").countDocuments({ "custody.activeOwnerId": userId, "custody.status": "active" });
+  const ownerMemberships = (await listActiveMembershipsForUser(userId))
+    .filter((membership) => membership.role === "owner");
+  if (!ownerMemberships.length) return 0;
+  const clubIds = ownerMemberships.map((membership) => membership.clubId);
+  if (!integrations.mongo) {
+    return demoClubs.filter(
+      (club) => clubIds.includes(club.id) && club.custody.status === "active",
+    ).length;
+  }
+  return (await getDb()).collection<Club>("clubs").countDocuments({
+    id: { $in: clubIds },
+    "custody.status": "active",
+  });
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {

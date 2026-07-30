@@ -36,7 +36,7 @@ export default async function ClubSettingsPage({ params }: { params: Promise<{ s
     <ClubAdminTabs clubSlug={club.slug} active="settings" memberCount={memberships.length} />
     <div className="dashboard-grid club-admin-settings-grid">
       <ClubSettingsForm clubSlug={club.slug} clubName={club.name} clubDescription={club.description} clubDescriptionHtml={club.descriptionHtml} ownerId={profile.id} clubImageUrl={club.imageUrl} clubAccent={normalizeClubAccent(club.accent)} schedule={club.schedule} nextDropRecipientName={nextDropRecipient?.displayName} nextDropDueLabel={nextDrop ? formatDateTime(nextDrop.scheduledFor, club.schedule.timezone) : undefined} />
-      <aside><section className="panel"><span className="section-kicker">Private access</span><h2>Shareable join link</h2><p>Revocable links expose only the club preview and request form.</p><CopyJoinLink clubSlug={club.slug} /></section><section className="panel" style={{ marginTop: 16 }}><ShieldCheck /><h2>Ownership</h2><p>Only a paid member with available capacity may accept ownership.</p></section></aside>
+      <aside><section className="panel"><span className="section-kicker">Private access</span><h2>Shareable join link</h2><p>Revocable links expose only the club preview and request form.</p><CopyJoinLink clubSlug={club.slug} /></section><section className="panel" style={{ marginTop: 16 }}><ShieldCheck /><h2>Ownership</h2><p>Eligible owners can add paid members with available capacity as co-owners or transfer ownership from the Members tab.</p></section></aside>
     </div>
   </>;
 }

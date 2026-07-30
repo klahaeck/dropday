@@ -31,9 +31,11 @@ export default async function ClubMembersSettingsPage({
     <ClubAdminTabs clubSlug={club.slug} active="members" memberCount={memberships.length} />
     <ClubMembers
       clubSlug={club.slug}
-      canManageRoles={
+      currentUserId={profile.id}
+      canManageRoles={viewerMembership.role === "owner"}
+      canManageOwnership={
         viewerMembership.role === "owner"
-        && club.custody.activeOwnerId === profile.id
+        && features.ownershipTransfer
       }
       initialMembers={memberships.map((membership) => {
         const user = usersById.get(membership.userId);
@@ -43,6 +45,9 @@ export default async function ClubMembersSettingsPage({
           initials: user?.initials ?? "DM",
           imageUrl: user?.imageUrl,
           role: membership.role,
+          isPrimaryOwner:
+            membership.role === "owner"
+            && membership.userId === club.custody.activeOwnerId,
         };
       })}
     />

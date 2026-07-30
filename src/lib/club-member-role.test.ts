@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildClubAdminPromotionNotification,
+  buildClubRolePromotionNotification,
   ClubMemberRoleError,
   planClubMemberRoleChange,
 } from "@/lib/club-member-role";
@@ -39,12 +39,16 @@ describe("club member role changes", () => {
       actorMembership: membership(),
       targetMembership: target,
       activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
       role: "admin",
       timestamp: "2026-07-30T19:00:00.000Z",
     });
 
     expect(result).toEqual({
       changed: true,
+      primaryOwnerId: "user-owner",
       membership: {
         ...target,
         role: "admin",
@@ -63,6 +67,9 @@ describe("club member role changes", () => {
         role: "admin",
       }),
       activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
       role: "member",
       timestamp,
     });
@@ -81,9 +88,16 @@ describe("club member role changes", () => {
       actorMembership: membership(),
       targetMembership: target,
       activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
       role: "admin",
       timestamp,
-    })).toEqual({ membership: target, changed: false });
+    })).toEqual({
+      membership: target,
+      changed: false,
+      primaryOwnerId: "user-owner",
+    });
   });
 
   it("does not let an admin assign more admins", () => {
@@ -91,25 +105,32 @@ describe("club member role changes", () => {
       actorMembership: membership({ userId: "user-admin", role: "admin" }),
       targetMembership: membership({ userId: "user-member", role: "member" }),
       activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
       role: "admin",
       timestamp,
     })).toThrowError(ClubMemberRoleError);
   });
 
-  it("does not change the owner role through member administration", () => {
+  it("does not let an owner remove their own ownership", () => {
     expect(() => planClubMemberRoleChange({
       actorMembership: membership(),
       targetMembership: membership(),
       activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
       role: "member",
       timestamp,
-    })).toThrowError(/owner’s role cannot be changed/i);
+    })).toThrowError(/cannot remove your own club ownership/i);
   });
 
   it("builds an account notification for a new admin", () => {
-    expect(buildClubAdminPromotionNotification({
+    expect(buildClubRolePromotionNotification({
       club: { name: "Club One", slug: "club-one" },
       membership: { userId: "user-member", role: "admin" },
+      previousRole: "member",
       changed: true,
       notificationId: "notification-promotion",
       timestamp,
@@ -125,19 +146,158 @@ describe("club member role changes", () => {
   });
 
   it("does not notify for repeated assignments or demotions", () => {
-    expect(buildClubAdminPromotionNotification({
+    expect(buildClubRolePromotionNotification({
       club: { name: "Club One", slug: "club-one" },
       membership: { userId: "user-member", role: "admin" },
+      previousRole: "admin",
       changed: false,
       notificationId: "notification-repeated",
       timestamp,
     })).toBeUndefined();
-    expect(buildClubAdminPromotionNotification({
+    expect(buildClubRolePromotionNotification({
       club: { name: "Club One", slug: "club-one" },
       membership: { userId: "user-member", role: "member" },
+      previousRole: "admin",
       changed: true,
       notificationId: "notification-demotion",
       timestamp,
     })).toBeUndefined();
+  });
+
+  it("lets any owner add an eligible co-owner", () => {
+    const coOwner = membership({
+      id: "membership-co-owner",
+      userId: "user-co-owner",
+      role: "owner",
+    });
+    const target = membership({
+      id: "membership-member",
+      userId: "user-member",
+      role: "member",
+    });
+
+    const result = planClubMemberRoleChange({
+      actorMembership: coOwner,
+      targetMembership: target,
+      activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
+      role: "owner",
+      timestamp,
+    });
+
+    expect(result).toMatchObject({
+      changed: true,
+      primaryOwnerId: "user-owner",
+      membership: { userId: "user-member", role: "owner" },
+    });
+  });
+
+  it("moves primary custody when a co-owner removes the primary owner", () => {
+    const result = planClubMemberRoleChange({
+      actorMembership: membership({
+        id: "membership-co-owner",
+        userId: "user-co-owner",
+        role: "owner",
+      }),
+      targetMembership: membership(),
+      activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
+      role: "admin",
+      timestamp,
+    });
+
+    expect(result).toMatchObject({
+      changed: true,
+      primaryOwnerId: "user-co-owner",
+      membership: { userId: "user-owner", role: "admin" },
+    });
+  });
+
+  it("enforces ownership entitlement for co-owners", () => {
+    expect(() => planClubMemberRoleChange({
+      actorMembership: membership(),
+      targetMembership: membership({
+        id: "membership-member",
+        userId: "user-member",
+        role: "member",
+      }),
+      activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: false,
+      role: "owner",
+      timestamp,
+    })).toThrowError(/cannot own another club/i);
+  });
+
+  it("keeps ownership changes behind the ownership-transfer feature", () => {
+    expect(() => planClubMemberRoleChange({
+      actorMembership: membership(),
+      targetMembership: membership({
+        id: "membership-member",
+        userId: "user-member",
+        role: "member",
+      }),
+      activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: false,
+      targetCanOwnAnotherClub: true,
+      role: "owner",
+      timestamp,
+    })).toThrowError(/plan does not include ownership changes/i);
+  });
+
+  it("transfers ownership atomically and keeps the former owner as an admin", () => {
+    const target = membership({
+      id: "membership-member",
+      userId: "user-member",
+      role: "member",
+    });
+
+    const result = planClubMemberRoleChange({
+      actorMembership: membership(),
+      targetMembership: target,
+      activeOwnerId: "user-owner",
+      custodyStatus: "active",
+      canChangeOwnership: true,
+      targetCanOwnAnotherClub: true,
+      transferOwnership: true,
+      role: "owner",
+      timestamp,
+    });
+
+    expect(result).toEqual({
+      changed: true,
+      primaryOwnerId: "user-member",
+      actorMembership: {
+        ...membership(),
+        role: "admin",
+      },
+      membership: {
+        ...target,
+        role: "owner",
+      },
+    });
+  });
+
+  it("notifies a member when ownership is transferred", () => {
+    expect(buildClubRolePromotionNotification({
+      club: { name: "Club One", slug: "club-one" },
+      membership: { userId: "user-member", role: "owner" },
+      previousRole: "member",
+      changed: true,
+      ownershipTransfer: true,
+      notificationId: "notification-transfer",
+      timestamp,
+    })).toMatchObject({
+      userId: "user-member",
+      kind: "membership",
+      title: "Ownership of Club One was transferred to you",
+      href: "/app/clubs/club-one/settings",
+    });
   });
 });

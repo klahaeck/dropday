@@ -739,12 +739,11 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-members-header p { max-width: 720px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-members-header > .tiny-label { flex: 0 0 auto; margin-top: 9px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-member-list { display: grid; border-top: 1px solid var(--line); }
-:root:is(:not([data-skin]), [data-skin="classic"]) .club-member-row { min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto minmax(138px, auto); gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-member-row { min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto minmax(240px, auto); gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-member-identity { min-width: 0; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-member-identity strong, :root:is(:not([data-skin]), [data-skin="classic"]) .club-member-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-member-identity small { margin-top: 3px; color: var(--muted); font-size: 11px; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .club-member-action { min-width: 138px; display: flex; justify-content: flex-end; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .club-member-action .button { min-width: 132px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-member-action { min-width: 240px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-member-owner-label { color: var(--muted); font-size: 11px; font-weight: 750; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-members-feedback { min-height: 17px; margin: 12px 0 0; color: var(--muted); font-size: 12px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-admin-queue-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
