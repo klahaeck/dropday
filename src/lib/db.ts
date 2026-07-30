@@ -28,6 +28,14 @@ export async function ensureIndexes() {
   const db = await getDb();
   await Promise.all([
     db.collection("users").createIndex({ clerkUserId: 1 }, { unique: true }),
+    db.collection("users").createIndex(
+      { generatedNameKey: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { generatedNameKey: { $type: "string" } },
+        name: "unique_generated_user_name",
+      },
+    ),
     db.collection("clubs").createIndex({ slug: 1 }, { unique: true }),
     db.collection("clubs").createIndex({ visibility: 1, "custody.status": 1, updatedAt: -1 }),
     db.collection("memberships").createIndex({ clubId: 1, userId: 1 }, { unique: true }),

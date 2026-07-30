@@ -35,8 +35,11 @@ export type NotificationKind =
 export interface UserProfile {
   id: Id;
   clerkUserId: string;
+  firstName?: string;
+  lastName?: string;
   displayName: string;
   initials: string;
+  generatedNameKey?: string;
   imageUrl?: string;
   primaryEmail?: string;
   plan: PlanKey;

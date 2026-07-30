@@ -5,6 +5,12 @@ const mocks = vi.hoisted(() => ({
   requireViewer: vi.fn(),
   getClubBySlug: vi.fn(),
   getClubMemberships: vi.fn(),
+  createId: vi.fn(() => "notification-promotion"),
+  deliverBrowserNotification: vi.fn(),
+  demoNotifications: [] as Array<Record<string, unknown>>,
+  integrations: { mongo: false },
+  getDb: vi.fn(),
+  getMongoClient: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -12,10 +18,24 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/env", () => ({
-  integrations: { mongo: false },
+  integrations: mocks.integrations,
+}));
+
+vi.mock("@/lib/db", () => ({
+  getDb: mocks.getDb,
+  getMongoClient: mocks.getMongoClient,
+}));
+
+vi.mock("@/lib/browser-push", () => ({
+  deliverBrowserNotification: mocks.deliverBrowserNotification,
+}));
+
+vi.mock("@/lib/demo-data", () => ({
+  demoNotifications: mocks.demoNotifications,
 }));
 
 vi.mock("@/lib/repository", () => ({
+  createId: mocks.createId,
   getClubBySlug: mocks.getClubBySlug,
   getClubMemberships: mocks.getClubMemberships,
 }));
@@ -57,6 +77,8 @@ describe("club member role route", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.integrations.mongo = false;
+    mocks.demoNotifications.length = 0;
     memberships = [
       membership(),
       membership({
@@ -76,6 +98,8 @@ describe("club member role route", () => {
     });
     mocks.getClubBySlug.mockResolvedValue({
       id: "club-1",
+      name: "Club One",
+      slug: "club-one",
       custody: { activeOwnerId: "user-owner" },
       updatedAt: timestamp,
     });
@@ -92,6 +116,15 @@ describe("club member role route", () => {
     });
     expect(memberships.find((item) => item.userId === "user-admin")?.role).toBe("admin");
     expect(memberships.find((item) => item.userId === "user-member")?.role).toBe("admin");
+    expect(mocks.demoNotifications).toEqual([
+      expect.objectContaining({
+        id: "notification-promotion",
+        userId: "user-member",
+        kind: "membership",
+        title: "You’re now an admin of Club One",
+        href: "/app/clubs/club-one/settings",
+      }),
+    ]);
   });
 
   it("lets the owner remove an admin role", async () => {
@@ -99,6 +132,74 @@ describe("club member role route", () => {
 
     expect(response.status).toBe(200);
     expect(memberships.find((item) => item.userId === "user-admin")?.role).toBe("member");
+    expect(mocks.demoNotifications).toHaveLength(0);
+  });
+
+  it("does not send another notification when the member is already an admin", async () => {
+    const response = await update("admin", "user-admin");
+
+    expect(response.status).toBe(200);
+    expect(memberships.find((item) => item.userId === "user-admin")?.role).toBe("admin");
+    expect(mocks.demoNotifications).toHaveLength(0);
+  });
+
+  it("persists the promotion notification before browser delivery", async () => {
+    mocks.integrations.mongo = true;
+    const events: string[] = [];
+    const notificationInsert = vi.fn(async () => {
+      events.push("persist");
+    });
+    const collections: Record<string, unknown> = {
+      clubs: {
+        findOne: vi.fn().mockResolvedValue({
+          id: "club-1",
+          name: "Club One",
+          slug: "club-one",
+          custody: { activeOwnerId: "user-owner" },
+        }),
+        updateOne: vi.fn().mockResolvedValue({ matchedCount: 1 }),
+      },
+      memberships: {
+        find: vi.fn(() => ({
+          toArray: vi.fn().mockResolvedValue(memberships),
+        })),
+        updateOne: vi.fn().mockResolvedValue({ matchedCount: 1 }),
+      },
+      notifications: {
+        insertOne: notificationInsert,
+      },
+    };
+    mocks.getDb.mockResolvedValue({
+      collection: vi.fn((name: string) => collections[name]),
+    });
+    mocks.getMongoClient.mockResolvedValue({
+      withSession: async (
+        work: (session: {
+          withTransaction: (transaction: () => Promise<void>) => Promise<void>;
+        }) => Promise<void>,
+      ) => work({
+        withTransaction: async (transaction) => transaction(),
+      }),
+    });
+    mocks.deliverBrowserNotification.mockImplementation(async () => {
+      events.push("deliver");
+    });
+
+    const response = await update("admin");
+
+    expect(response.status).toBe(200);
+    expect(notificationInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "notification-promotion",
+        userId: "user-member",
+        kind: "membership",
+      }),
+      expect.objectContaining({ session: expect.any(Object) }),
+    );
+    expect(mocks.deliverBrowserNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "notification-promotion" }),
+    );
+    expect(events).toEqual(["persist", "deliver"]);
   });
 
   it("does not let an admin grant admin access", async () => {

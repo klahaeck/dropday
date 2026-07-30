@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildClubAdminPromotionNotification,
   ClubMemberRoleError,
   planClubMemberRoleChange,
 } from "@/lib/club-member-role";
@@ -103,5 +104,40 @@ describe("club member role changes", () => {
       role: "member",
       timestamp,
     })).toThrowError(/owner’s role cannot be changed/i);
+  });
+
+  it("builds an account notification for a new admin", () => {
+    expect(buildClubAdminPromotionNotification({
+      club: { name: "Club One", slug: "club-one" },
+      membership: { userId: "user-member", role: "admin" },
+      changed: true,
+      notificationId: "notification-promotion",
+      timestamp,
+    })).toEqual({
+      id: "notification-promotion",
+      userId: "user-member",
+      kind: "membership",
+      title: "You’re now an admin of Club One",
+      body: "You can now manage club settings, members, themes, backups, and the queue.",
+      href: "/app/clubs/club-one/settings",
+      createdAt: timestamp,
+    });
+  });
+
+  it("does not notify for repeated assignments or demotions", () => {
+    expect(buildClubAdminPromotionNotification({
+      club: { name: "Club One", slug: "club-one" },
+      membership: { userId: "user-member", role: "admin" },
+      changed: false,
+      notificationId: "notification-repeated",
+      timestamp,
+    })).toBeUndefined();
+    expect(buildClubAdminPromotionNotification({
+      club: { name: "Club One", slug: "club-one" },
+      membership: { userId: "user-member", role: "member" },
+      changed: true,
+      notificationId: "notification-demotion",
+      timestamp,
+    })).toBeUndefined();
   });
 });

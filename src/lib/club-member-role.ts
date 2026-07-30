@@ -1,4 +1,4 @@
-import type { ClubMembership } from "@/types/domain";
+import type { Club, ClubMembership, Notification } from "@/types/domain";
 
 export type AssignableClubRole = "admin" | "member";
 
@@ -54,5 +54,31 @@ export function planClubMemberRoleChange({
       role,
       updatedAt: timestamp,
     },
+  };
+}
+
+export function buildClubAdminPromotionNotification({
+  club,
+  membership,
+  changed,
+  notificationId,
+  timestamp,
+}: {
+  club: Pick<Club, "name" | "slug">;
+  membership: Pick<ClubMembership, "userId" | "role">;
+  changed: boolean;
+  notificationId: string;
+  timestamp: string;
+}): Notification | undefined {
+  if (!changed || membership.role !== "admin") return undefined;
+
+  return {
+    id: notificationId,
+    userId: membership.userId,
+    kind: "membership",
+    title: `You’re now an admin of ${club.name}`,
+    body: "You can now manage club settings, members, themes, backups, and the queue.",
+    href: `/app/clubs/${club.slug}/settings`,
+    createdAt: timestamp,
   };
 }

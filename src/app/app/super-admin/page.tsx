@@ -9,6 +9,8 @@ import {
 import { requireViewer } from "@/lib/auth";
 import { hasSuperAdminAccess } from "@/lib/clerk-metadata";
 import { complimentaryPlanFromPrivateMetadata } from "@/lib/entitlements";
+import { getUsersByIds } from "@/lib/repository";
+import { resolveUserName } from "@/lib/user-name";
 
 const PAGE_SIZE = 25;
 
@@ -39,19 +41,24 @@ export default async function SuperAdminPage({
     offset,
     orderBy: "-last_active_at",
   });
+  const profiles = await getUsersByIds(result.data.map((user) => user.id));
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
   const users: SuperAdminUserRow[] = result.data.map((user) => {
-    const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ")
-      || user.username
-      || "Dropday member";
+    const resolvedName = user.firstName && user.lastName
+      ? resolveUserName({
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      })
+      : profilesById.get(user.id) ?? resolveUserName({
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      });
     return {
       id: user.id,
-      displayName,
-      initials: displayName
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((part) => part[0])
-        .join("")
-        .toUpperCase(),
+      displayName: resolvedName.displayName,
+      initials: resolvedName.initials,
       imageUrl: user.imageUrl,
       primaryEmail: user.primaryEmailAddress?.emailAddress,
       complimentaryPlan: complimentaryPlanFromPrivateMetadata(user.privateMetadata),

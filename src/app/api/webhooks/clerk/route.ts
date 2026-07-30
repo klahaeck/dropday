@@ -4,6 +4,7 @@ import { applyBillingPlan } from "@/lib/billing-service";
 import { getDb } from "@/lib/db";
 import { DEFAULT_EMAIL_PREFERENCES } from "@/lib/email-preferences";
 import { integrations } from "@/lib/env";
+import { persistWithUniqueUserName, type ResolvedUserName } from "@/lib/user-name";
 import type { PlanKey, UserProfile } from "@/types/domain";
 
 function planFromPayload(payload: unknown): PlanKey {
@@ -35,25 +36,45 @@ export async function POST(request: NextRequest) {
 
     if (event.type === "user.created" || event.type === "user.updated") {
       const data = event.data;
-      const displayName = [data.first_name, data.last_name].filter(Boolean).join(" ") || data.username || "Dropday member";
       const timestamp = new Date().toISOString();
-      await db.collection<UserProfile>("users").updateOne(
-        { clerkUserId: data.id },
-        { $set: {
-          id: data.id, clerkUserId: data.id, displayName,
-          initials: displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(),
-          imageUrl: data.image_url, primaryEmail: data.email_addresses?.find((email) => email.id === data.primary_email_address_id)?.email_address,
-          updatedAt: timestamp,
-        }, $setOnInsert: {
-          plan: "free",
-          emailNotifications: true,
-          emailPreferences: DEFAULT_EMAIL_PREFERENCES,
-          themePreference: "system",
-          skinPreference: "classic",
-          createdAt: timestamp,
-        } },
-        { upsert: true },
-      );
+      const users = db.collection<UserProfile>("users");
+      const existingProfile = await users.findOne({ clerkUserId: data.id });
+      const identity = {
+        userId: data.id,
+        firstName: data.first_name,
+        lastName: data.last_name,
+      };
+      await persistWithUniqueUserName({
+        identity,
+        existing: existingProfile,
+        persist: async (name: ResolvedUserName) => users.updateOne(
+          { clerkUserId: data.id },
+          {
+            $set: {
+              id: data.id,
+              clerkUserId: data.id,
+              firstName: name.firstName,
+              lastName: name.lastName,
+              displayName: name.displayName,
+              initials: name.initials,
+              ...(name.generatedNameKey ? { generatedNameKey: name.generatedNameKey } : {}),
+              imageUrl: data.image_url,
+              primaryEmail: data.email_addresses?.find((email) => email.id === data.primary_email_address_id)?.email_address,
+              updatedAt: timestamp,
+            },
+            $setOnInsert: {
+              plan: "free",
+              emailNotifications: true,
+              emailPreferences: DEFAULT_EMAIL_PREFERENCES,
+              themePreference: "system",
+              skinPreference: "classic",
+              createdAt: timestamp,
+            },
+            ...(!name.generatedNameKey ? { $unset: { generatedNameKey: "" } } : {}),
+          },
+          { upsert: true },
+        ),
+      });
     }
 
     if (event.type.startsWith("subscriptionItem.")) {

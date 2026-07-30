@@ -2,14 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
 import {
+  buildClubAdminPromotionNotification,
   ClubMemberRoleError,
   planClubMemberRoleChange,
   type AssignableClubRole,
 } from "@/lib/club-member-role";
+import { deliverBrowserNotification } from "@/lib/browser-push";
 import { getDb, getMongoClient } from "@/lib/db";
+import { demoNotifications } from "@/lib/demo-data";
 import { integrations } from "@/lib/env";
-import { getClubBySlug, getClubMemberships } from "@/lib/repository";
-import type { Club, ClubMembership } from "@/types/domain";
+import { createId, getClubBySlug, getClubMemberships } from "@/lib/repository";
+import type { Club, ClubMembership, Notification } from "@/types/domain";
 
 const schema = z.object({
   role: z.enum(["admin", "member"]),
@@ -58,6 +61,14 @@ export async function PATCH(
         const target = memberships.find((membership) => membership.id === result.membership.id);
         if (target) Object.assign(target, result.membership);
         club.updatedAt = timestamp;
+        const notification = buildClubAdminPromotionNotification({
+          club,
+          membership: result.membership,
+          changed: result.changed,
+          notificationId: createId("notification"),
+          timestamp,
+        });
+        if (notification) demoNotifications.unshift(notification);
       }
       return NextResponse.json({
         memberId: result.membership.userId,
@@ -75,9 +86,13 @@ export async function PATCH(
   const db = await getDb();
   const client = await getMongoClient();
   let outcome: RoleUpdateResult | undefined;
+  let browserNotification: Notification | undefined;
 
   try {
     await client.withSession(async (session) => session.withTransaction(async () => {
+      outcome = undefined;
+      browserNotification = undefined;
+
       const currentClub = await db.collection<Club>("clubs").findOne(
         { id: club.id },
         { session },
@@ -147,6 +162,20 @@ export async function PATCH(
         throw new Error("Club role state changed during the update");
       }
 
+      browserNotification = buildClubAdminPromotionNotification({
+        club: currentClub,
+        membership: planned.membership,
+        changed: planned.changed,
+        notificationId: createId("notification"),
+        timestamp,
+      });
+      if (browserNotification) {
+        await db.collection<Notification>("notifications").insertOne(
+          browserNotification,
+          { session },
+        );
+      }
+
       outcome = {
         status: 200,
         memberId: planned.membership.userId,
@@ -160,6 +189,7 @@ export async function PATCH(
   if (!outcome) {
     return NextResponse.json({ error: "Could not update this member’s role." }, { status: 500 });
   }
+  if (browserNotification) await deliverBrowserNotification(browserNotification);
   return NextResponse.json(
     {
       ...(outcome.error ? { error: outcome.error } : {}),

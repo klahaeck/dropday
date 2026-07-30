@@ -12,6 +12,11 @@ import {
   type ProductFeatureAccess,
 } from "@/lib/entitlements";
 import { DEFAULT_SKIN } from "@/lib/skin";
+import {
+  persistWithUniqueUserName,
+  resolveUserName,
+  type ResolvedUserName,
+} from "@/lib/user-name";
 import type { UserProfile } from "@/types/domain";
 
 export interface Viewer {
@@ -37,8 +42,6 @@ export async function getViewer(): Promise<Viewer | null> {
   if (!session.userId) return null;
   const clerkUser = await currentUser();
   if (!clerkUser) return null;
-  const displayName =
-    [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || clerkUser.username || "Dropday member";
   const checkPlan = (planSlug: string) => session.has({ plan: planSlug });
   const checkFeature = (featureSlug: string) => session.has({ feature: featureSlug });
   const clerkPlan = planFromClerkChecks(checkPlan, checkFeature);
@@ -51,11 +54,14 @@ export async function getViewer(): Promise<Viewer | null> {
   const existingProfile = db
     ? await db.collection<UserProfile>("users").findOne({ clerkUserId: clerkUser.id })
     : null;
-  const profile: UserProfile = {
+  const identity = {
+    userId: clerkUser.id,
+    firstName: clerkUser.firstName,
+    lastName: clerkUser.lastName,
+  };
+  const baseProfile = {
     id: clerkUser.id,
     clerkUserId: clerkUser.id,
-    displayName,
-    initials: displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(),
     imageUrl: clerkUser.imageUrl,
     primaryEmail: clerkUser.primaryEmailAddress?.emailAddress,
     plan,
@@ -67,13 +73,33 @@ export async function getViewer(): Promise<Viewer | null> {
     updatedAt: timestamp,
   };
 
-  if (db) {
-    await db.collection<UserProfile>("users").updateOne(
-      { clerkUserId: clerkUser.id },
-      { $set: profile },
-      { upsert: true },
-    );
-  }
+  const buildProfile = (name: ResolvedUserName): UserProfile => ({
+    ...baseProfile,
+    firstName: name.firstName,
+    lastName: name.lastName,
+    displayName: name.displayName,
+    initials: name.initials,
+    ...(name.generatedNameKey ? { generatedNameKey: name.generatedNameKey } : {}),
+  });
+  const profile = db
+    ? (await persistWithUniqueUserName<UserProfile>({
+      identity,
+      existing: existingProfile,
+      persist: async (name) => {
+        const nextProfile = buildProfile(name);
+        await db.collection<UserProfile>("users").updateOne(
+          { clerkUserId: clerkUser.id },
+          {
+            $set: nextProfile,
+            ...(!name.generatedNameKey ? { $unset: { generatedNameKey: "" } } : {}),
+          },
+          { upsert: true },
+        );
+        return nextProfile;
+      },
+    })).result
+    : buildProfile(resolveUserName(identity));
+
   return { profile, features, isDemo: false, isSuperAdmin };
 }
 
