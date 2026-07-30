@@ -199,6 +199,38 @@ const clerkThemeVariables = {
   },
 } as const satisfies Record<SkinPreference, Record<"light" | "dark", Record<string, string>>>;
 
+const clerkAuthAppearance = {
+  elements: {
+    formButtonPrimary: {
+      color: "var(--on-solid)",
+    },
+    formFieldInput: {
+      color: "var(--ink)",
+      caretColor: "var(--ink)",
+      borderColor: "color-mix(in srgb, var(--ink) 50%, transparent)",
+      "&::placeholder": {
+        color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+        opacity: "1",
+      },
+      "&:focus": {
+        borderColor: "var(--ink)",
+      },
+    },
+    socialButtonsIconButton: {
+      borderColor: "color-mix(in srgb, var(--ink) 50%, transparent)",
+    },
+    headerSubtitle: {
+      color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+    },
+    dividerText: {
+      color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+    },
+    footerActionText: {
+      color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+    },
+  },
+} as const;
+
 export function AuthProvider({
   enabled,
   publishableKey,
@@ -249,12 +281,28 @@ export function ClerkPricing({ enabled }: { enabled: boolean }) {
 
 export function ClerkSignIn({ enabled }: { enabled: boolean }) {
   if (!enabled) return null;
-  return <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/app" />;
+  return (
+    <SignIn
+      routing="path"
+      path="/sign-in"
+      signUpUrl="/sign-up"
+      fallbackRedirectUrl="/app"
+      appearance={clerkAuthAppearance}
+    />
+  );
 }
 
 export function ClerkSignUp({ enabled }: { enabled: boolean }) {
   if (!enabled) return null;
-  return <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" fallbackRedirectUrl="/app" />;
+  return (
+    <SignUp
+      routing="path"
+      path="/sign-up"
+      signInUrl="/sign-in"
+      fallbackRedirectUrl="/app"
+      appearance={clerkAuthAppearance}
+    />
+  );
 }
 
 export function ClerkUserMenu({ enabled }: { enabled: boolean }) {

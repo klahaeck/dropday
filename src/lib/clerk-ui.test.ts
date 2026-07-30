@@ -27,6 +27,38 @@ vi.mock("@clerk/ui", () => ({
 
 import { ClerkSignIn, ClerkSignUp } from "@/components/clerk-ui";
 
+const expectedClerkAuthAppearance = {
+  elements: {
+    formButtonPrimary: {
+      color: "var(--on-solid)",
+    },
+    formFieldInput: {
+      color: "var(--ink)",
+      caretColor: "var(--ink)",
+      borderColor: "color-mix(in srgb, var(--ink) 50%, transparent)",
+      "&::placeholder": {
+        color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+        opacity: "1",
+      },
+      "&:focus": {
+        borderColor: "var(--ink)",
+      },
+    },
+    socialButtonsIconButton: {
+      borderColor: "color-mix(in srgb, var(--ink) 50%, transparent)",
+    },
+    headerSubtitle: {
+      color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+    },
+    dividerText: {
+      color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+    },
+    footerActionText: {
+      color: "color-mix(in srgb, var(--ink) 72%, transparent)",
+    },
+  },
+};
+
 describe("Clerk authentication redirects", () => {
   beforeEach(() => {
     clerk.signInProps = undefined;
@@ -39,6 +71,7 @@ describe("Clerk authentication redirects", () => {
     expect(clerk.signInProps).toMatchObject({
       fallbackRedirectUrl: "/app",
       signUpUrl: "/sign-up",
+      appearance: expectedClerkAuthAppearance,
     });
     expect(clerk.signInProps).not.toHaveProperty("forceRedirectUrl");
   });
@@ -49,6 +82,7 @@ describe("Clerk authentication redirects", () => {
     expect(clerk.signUpProps).toMatchObject({
       fallbackRedirectUrl: "/app",
       signInUrl: "/sign-in",
+      appearance: expectedClerkAuthAppearance,
     });
     expect(clerk.signUpProps).not.toHaveProperty("forceRedirectUrl");
   });

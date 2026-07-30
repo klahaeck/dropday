@@ -111,7 +111,7 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) a { color: inherit; text-decoration: none; }
 :root:is(:not([data-skin]), [data-skin="classic"]) button, :root:is(:not([data-skin]), [data-skin="classic"]) input, :root:is(:not([data-skin]), [data-skin="classic"]) textarea, :root:is(:not([data-skin]), [data-skin="classic"]) select { color-scheme: inherit; font: inherit; }
 :root:is(:not([data-skin]), [data-skin="classic"]) button, :root:is(:not([data-skin]), [data-skin="classic"]) a { -webkit-tap-highlight-color: transparent; }
-:root:is(:not([data-skin]), [data-skin="classic"]) button { color: inherit; }
+:root:is(:not([data-skin]), [data-skin="classic"]) button:not([data-color]) { color: inherit; }
 :root:is(:not([data-skin]), [data-skin="classic"]) img { max-width: 100%; display: block; }
 :root:is(:not([data-skin]), [data-skin="classic"]) h1, :root:is(:not([data-skin]), [data-skin="classic"]) h2, :root:is(:not([data-skin]), [data-skin="classic"]) h3, :root:is(:not([data-skin]), [data-skin="classic"]) p { margin-top: 0; }
 :root:is(:not([data-skin]), [data-skin="classic"]) h1, :root:is(:not([data-skin]), [data-skin="classic"]) h2, :root:is(:not([data-skin]), [data-skin="classic"]) h3 { letter-spacing: -0.045em; line-height: 0.98; }
