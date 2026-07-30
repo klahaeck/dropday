@@ -3,7 +3,11 @@ import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
 import { discardArtwork, isOwnedArtworkUrl } from "@/lib/blob-artwork";
 import { nextClubThemeVersion } from "@/lib/club-theme-history";
-import { getDb } from "@/lib/db";
+import {
+  buildCurrentThemeNotifications,
+  deliverCurrentThemeNotifications,
+} from "@/lib/club-theme-notifications";
+import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import { getClubBySlug, getClubMemberships } from "@/lib/repository";
 import {
@@ -12,7 +16,7 @@ import {
   sanitizeThemeDescriptionHtml,
   themeDescriptionToText,
 } from "@/lib/theme-description";
-import type { Club, ClubTheme } from "@/types/domain";
+import type { Club, ClubTheme, Notification } from "@/types/domain";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -73,7 +77,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     version,
     updatedAt: timestamp,
   };
+  const notifications = parsed.data.setCurrent
+    ? buildCurrentThemeNotifications({ club, theme, memberships, timestamp })
+    : [];
 
+  let updated = false;
   try {
     const currentThemeFilter = club.currentTheme
       ? { "currentTheme.version": club.currentTheme.version }
@@ -95,15 +103,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
           $set: { updatedAt: timestamp },
           $push: { savedThemes: theme },
         };
-    const result = await (await getDb()).collection<Club>("clubs").updateOne(filter, update);
-    if (!result.matchedCount) {
-      await discardArtwork(uploadedArtwork);
-      return NextResponse.json({ error: "The theme list changed. Refresh and try again." }, { status: 409 });
+    const db = await getDb();
+    if (parsed.data.setCurrent) {
+      const client = await getMongoClient();
+      await client.withSession(async (session) => session.withTransaction(async () => {
+        const result = await db.collection<Club>("clubs").updateOne(filter, update, { session });
+        updated = result.matchedCount === 1;
+        if (!updated || !notifications.length) return;
+        await db.collection<Notification>("notifications").insertMany(notifications, { session });
+      }));
+    } else {
+      const result = await db.collection<Club>("clubs").updateOne(filter, update);
+      updated = result.matchedCount === 1;
     }
   } catch {
     await discardArtwork(uploadedArtwork);
     return NextResponse.json({ error: "Could not create this theme." }, { status: 500 });
   }
+  if (!updated) {
+    await discardArtwork(uploadedArtwork);
+    return NextResponse.json({ error: "The theme list changed. Refresh and try again." }, { status: 409 });
+  }
 
+  if (notifications.length) await deliverCurrentThemeNotifications({ notifications });
   return NextResponse.json({ theme, status: parsed.data.setCurrent ? "current" : "saved" }, { status: 201 });
 }

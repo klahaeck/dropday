@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Settings } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
-import { appNavigationItems, NotificationBadge } from "@/components/app-navigation-items";
+import { appNavigationItems } from "@/components/app-navigation-items";
 import { ClerkUserMenu } from "@/components/clerk-ui";
+import { UnreadNotificationBadge } from "@/components/unread-notification-badge";
 import {
   Sidebar,
   SidebarContent,
@@ -36,7 +37,7 @@ export function AppNav({ user, isDemo, unreadCount }: { user: UserProfile; isDem
                     <span className="sidebar-menu-label">{label}</span>
                     {href === "/app/notifications" && (
                       <SidebarMenuBadge>
-                        <NotificationBadge count={unreadCount} />
+                        <UnreadNotificationBadge key={unreadCount} initialCount={unreadCount} />
                       </SidebarMenuBadge>
                     )}
                   </Link>

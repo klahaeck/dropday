@@ -9,6 +9,10 @@ import { Bold, Check, ImagePlus, Italic, List, LoaderCircle, X } from "lucide-re
 import type { ArtworkKind } from "@/lib/blob-artwork";
 import { DEFAULT_CLUB_ACCENT, normalizeClubAccent } from "@/lib/club-accent";
 import { CLUB_DESCRIPTION_HTML_MAX_LENGTH, CLUB_DESCRIPTION_MAX_LENGTH, sanitizeClubDescriptionHtml } from "@/lib/club-description";
+import {
+  DROP_REMINDER_OPTIONS,
+  normalizeDropReminderOffsets,
+} from "@/lib/drop-reminder-settings";
 import { PLAYLIST_DESCRIPTION_HTML_MAX_LENGTH, PLAYLIST_DESCRIPTION_MAX_LENGTH } from "@/lib/playlist-description";
 import { getPlaylistVersions } from "@/lib/playlist-providers";
 import { plainTextToRichTextHtml } from "@/lib/rich-text";
@@ -703,6 +707,8 @@ export function ClubSettingsForm({
   clubImageUrl,
   clubAccent,
   schedule,
+  nextDropRecipientName,
+  nextDropDueLabel,
 }: {
   clubSlug: string;
   clubName: string;
@@ -712,6 +718,8 @@ export function ClubSettingsForm({
   clubImageUrl?: string;
   clubAccent: string;
   schedule: RecurrenceConfig;
+  nextDropRecipientName?: string;
+  nextDropDueLabel?: string;
 }) {
   const initialDescriptionHtml = clubDescriptionHtml
     ? sanitizeClubDescriptionHtml(clubDescriptionHtml)
@@ -729,6 +737,7 @@ export function ClubSettingsForm({
   const [uploadStatus, setUploadStatus] = useState<string>();
   const descriptionEditorRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const reminderOffsets = normalizeDropReminderOffsets(schedule.reminderOffsetsMinutes);
 
   function imageBusy(busy: boolean) {
     setPreparingImages((count) => Math.max(0, count + (busy ? 1 : -1)));
@@ -775,6 +784,9 @@ export function ClubSettingsForm({
     setMessage(undefined);
     setNotice(undefined);
     const form = new FormData(event.currentTarget);
+    const reminderOffsetsMinutes = normalizeDropReminderOffsets(
+      form.getAll("reminderOffsetsMinutes").map(Number),
+    );
     const uploadedUrls: string[] = [];
     let submissionStarted = false;
     try {
@@ -796,6 +808,7 @@ export function ClubSettingsForm({
           accent,
           clubImageUrl: nextClubImageUrl,
           ...Object.fromEntries(form.entries()),
+          reminderOffsetsMinutes,
         }),
       });
       const result = (await response.json()) as { error?: string; warning?: string };
@@ -822,6 +835,29 @@ export function ClubSettingsForm({
   return <form className="form-shell" onSubmit={submit}>
     <section className="form-section"><span className="section-kicker">Club identity</span><h2>Club details</h2><div className="form-grid"><div className="field field-full"><label htmlFor="settings-club-name">Club title</label><input id="settings-club-name" required minLength={2} maxLength={70} value={name} onChange={(event) => setName(event.target.value)} /></div><div className="field field-full"><label id="settings-club-description-label">Description</label><div className="rich-text-shell"><div className="rich-text-toolbar" role="toolbar" aria-label="Description formatting"><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("bold")}><Bold size={16} /></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("italic")}><Italic size={16} /></button><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("insertUnorderedList")}><List size={16} /></button></div><div ref={descriptionEditorRef} id="settings-club-description" className="rich-text-editor rich-text-editor-compact" contentEditable role="textbox" aria-labelledby="settings-club-description-label" aria-multiline="true" aria-required="true" data-placeholder="What kind of listening club is this?" onInput={updateDescription} onPaste={pasteDescription} suppressContentEditableWarning dangerouslySetInnerHTML={{ __html: initialDescriptionHtml }} /></div><span className={`field-counter${descriptionText.length > CLUB_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{descriptionText.length.toLocaleString()}/{CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><div className="field field-full"><label htmlFor="settings-club-accent">Primary color</label><div className="color-field"><input id="settings-club-accent" type="color" value={accent} onChange={(event) => setAccent(event.target.value)} /><span>{accent.toUpperCase()}</span></div><small>Used as the background color on the club detail page.</small></div><ArtworkPicker id="settings-club-image" label="Club image" initials={name.trim().slice(0, 1).toUpperCase() || "D"} existingUrl={clubImageUrl} onChange={setClubArtwork} onBusyChange={imageBusy} /></div></section>
     <RitualFields idPrefix="club-settings-ritual" schedule={schedule} kicker="Schedule" />
+    <section className="form-section">
+      <span className="section-kicker">Notifications</span>
+      <h2>Next drop reminders</h2>
+      <p className="form-note">
+        {nextDropRecipientName
+          ? `Dropday will remind ${nextDropRecipientName}${nextDropDueLabel ? ` before their drop on ${nextDropDueLabel}` : ""}.`
+          : "Dropday will remind the assigned member before their next drop."}
+        {" "}Each reminder appears in Dropday and is also sent by browser push and email when the member has those channels enabled.
+      </p>
+      <div className="form-grid">
+        {[0, 1].map((index) => <div className="field" key={index}>
+          <label htmlFor={`settings-drop-reminder-${index}`}>{index === 0 ? "First reminder" : "Second reminder"}</label>
+          <select
+            id={`settings-drop-reminder-${index}`}
+            name="reminderOffsetsMinutes"
+            defaultValue={reminderOffsets[index]?.toString() ?? ""}
+          >
+            <option value="">No reminder</option>
+            {DROP_REMINDER_OPTIONS.map((option) => <option value={option.minutes} key={option.minutes}>{option.label}</option>)}
+          </select>
+        </div>)}
+      </div>
+    </section>
     {message && <p className="form-note form-error" role="alert">{message}</p>}
     {notice && <p className="form-note" role="status">{notice}</p>}
     <div className="form-actions"><span className="form-note">{uploadStatus}</span><button className="button button-dark" disabled={loading || preparingImages > 0}><SubmitState loading={loading} success={saved} idle="Save settings" /></button></div>

@@ -20,7 +20,7 @@ export function NotificationBadge({ count }: { count: number }) {
   return (
     <span
       className="notification-badge"
-      aria-label={`${count} unread notifications`}
+      aria-label={`${count} unread ${count === 1 ? "notification" : "notifications"}`}
     >
       {count > 99 ? "99+" : count}
     </span>

@@ -12,6 +12,7 @@ import { CLUB_ACCENT_PATTERN, DEFAULT_CLUB_ACCENT } from "@/lib/club-accent";
 import { getDb, getMongoClient } from "@/lib/db";
 import { getOwnershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
+import { DEFAULT_DROP_REMINDER_OFFSETS } from "@/lib/drop-reminder-settings";
 import { createAnchoredRecurrence, nextOccurrences, occurrenceKey } from "@/lib/scheduling";
 import { countOwnedClubs, createId } from "@/lib/repository";
 import { scheduleDropTasks } from "@/lib/scheduler";
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
   const schedule = createAnchoredRecurrence({
     timezone: parsed.data.timezone, startsOn: parsed.data.startsOn, localTime: parsed.data.localTime,
     frequency: parsed.data.frequency, interval: parsed.data.interval,
-    reminderOffsetsMinutes: [1440, 60], version: 1, paused: false,
+    reminderOffsetsMinutes: DEFAULT_DROP_REMINDER_OFFSETS, version: 1, paused: false,
   });
   const requestedSlug = slugify(parsed.data.name) || id.slice(-8);
   const exists = await db.collection<Club>("clubs").findOne({ slug: requestedSlug }, { projection: { id: 1 } });

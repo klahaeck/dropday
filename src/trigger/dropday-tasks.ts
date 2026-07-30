@@ -3,6 +3,7 @@ import { schedules, task } from "@trigger.dev/sdk";
 import { archiveExpiredCustodyClubs } from "@/lib/billing-service";
 import { deliverBrowserNotification } from "@/lib/browser-push";
 import { getDb } from "@/lib/db";
+import { deliverDropReminder } from "@/lib/drop-reminders";
 import { sendDropdayEmail } from "@/lib/email";
 import { env, integrations } from "@/lib/env";
 import { processScheduledDrop } from "@/lib/drop-service";
@@ -35,20 +36,18 @@ export const sendDropReminderTask = task({
       db.collection<UserProfile>("users").findOne({ id: drop.assignedUserId }),
     ]);
     if (!club || !user) return { status: "missing" };
-    const id = `notification_reminder_${drop.occurrenceKey}_${payload.offsetMinutes}`;
-    const notification: Notification = {
-      id, userId: user.id, kind: "reminder", title: `Your ${club.name} drop is coming up`,
-      body: `${payload.offsetMinutes >= 1440 ? `${payload.offsetMinutes / 1440} day` : `${payload.offsetMinutes / 60} hour`} reminder for ${club.currentTheme?.name ?? "your freeform drop"}.`,
-      href: `/app/clubs/${club.slug}`, createdAt: new Date().toISOString(),
-    };
-    const notificationInsert = await db.collection<Notification>("notifications")
-      .updateOne({ id }, { $setOnInsert: notification }, { upsert: true });
-    if (notificationInsert.upsertedCount === 1) await deliverBrowserNotification(notification);
-    await sendDropdayEmail({
-      user, kind: notification.kind, subject: notification.title, heading: "You’re almost up.", body: notification.body,
-      href: notification.href, idempotencyKey: id,
+    const notification = await deliverDropReminder({
+      drop,
+      club,
+      user,
+      offsetMinutes: payload.offsetMinutes,
+      persistNotification: async (candidate) => {
+        const result = await db.collection<Notification>("notifications")
+          .updateOne({ id: candidate.id }, { $setOnInsert: candidate }, { upsert: true });
+        return result.upsertedCount === 1;
+      },
     });
-    return { status: "sent", notificationId: id };
+    return { status: "sent", notificationId: notification.id };
   },
 });
 

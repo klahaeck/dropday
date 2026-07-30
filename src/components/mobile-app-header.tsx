@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, Compass, Menu, Plus, Settings, X } from "lucide-react";
-import { appNavigationItems, NotificationBadge } from "@/components/app-navigation-items";
+import { appNavigationItems } from "@/components/app-navigation-items";
 import { Avatar } from "@/components/avatar";
 import { Brand } from "@/components/brand";
 import { ClerkUserMenu } from "@/components/clerk-ui";
+import { UnreadNotificationBadge } from "@/components/unread-notification-badge";
 import type { UserProfile } from "@/types/domain";
 
 export function MobileAppHeader({
@@ -96,9 +97,10 @@ export function MobileAppHeader({
           <Link href="/app/discover" aria-label="Discover">
             <Compass size={17} />
           </Link>
-          <Link href="/app/notifications" aria-label={`Notifications, ${unreadCount} unread`}>
+          <Link href="/app/notifications">
             <Bell size={17} />
-            <NotificationBadge count={unreadCount} />
+            <span className="sr-only">Notifications</span>
+            <UnreadNotificationBadge key={unreadCount} initialCount={unreadCount} />
           </Link>
           <button
             ref={menuButtonRef}
@@ -146,7 +148,9 @@ export function MobileAppHeader({
                 <Link href={href} key={href} onClick={() => closeMenu()}>
                   <Icon size={18} />
                   <span>{label}</span>
-                  {href === "/app/notifications" && <NotificationBadge count={unreadCount} />}
+                  {href === "/app/notifications" && (
+                    <UnreadNotificationBadge key={unreadCount} initialCount={unreadCount} />
+                  )}
                 </Link>
               ))}
             </nav>

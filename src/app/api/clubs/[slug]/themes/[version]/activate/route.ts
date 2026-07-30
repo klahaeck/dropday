@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireViewer } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import {
+  buildCurrentThemeNotifications,
+  deliverCurrentThemeNotifications,
+} from "@/lib/club-theme-notifications";
+import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import { getClubBySlug, getClubMemberships } from "@/lib/repository";
-import type { Club } from "@/types/domain";
+import type { Club, Notification } from "@/types/domain";
 
 export async function POST(
   _request: Request,
@@ -34,6 +38,13 @@ export async function POST(
 
   const timestamp = new Date().toISOString();
   const currentTheme = { ...savedTheme, updatedAt: timestamp };
+  const notifications = buildCurrentThemeNotifications({
+    club,
+    theme: currentTheme,
+    memberships,
+    timestamp,
+  });
+  let updated = false;
   try {
     const currentThemeFilter = club.currentTheme
       ? { "currentTheme.version": club.currentTheme.version }
@@ -48,16 +59,25 @@ export async function POST(
           $set: { currentTheme, updatedAt: timestamp },
           $pull: { savedThemes: { version } },
         };
-    const result = await (await getDb()).collection<Club>("clubs").updateOne(
-      { id: club.id, ...currentThemeFilter, "savedThemes.version": version },
-      update,
-    );
-    if (!result.matchedCount) {
-      return NextResponse.json({ error: "The theme list changed. Refresh and try again." }, { status: 409 });
-    }
+    const db = await getDb();
+    const client = await getMongoClient();
+    await client.withSession(async (session) => session.withTransaction(async () => {
+      const result = await db.collection<Club>("clubs").updateOne(
+        { id: club.id, ...currentThemeFilter, "savedThemes.version": version },
+        update,
+        { session },
+      );
+      updated = result.matchedCount === 1;
+      if (!updated || !notifications.length) return;
+      await db.collection<Notification>("notifications").insertMany(notifications, { session });
+    }));
   } catch {
     return NextResponse.json({ error: "Could not make this theme current." }, { status: 500 });
   }
+  if (!updated) {
+    return NextResponse.json({ error: "The theme list changed. Refresh and try again." }, { status: 409 });
+  }
 
+  await deliverCurrentThemeNotifications({ notifications });
   return NextResponse.json({ theme: currentTheme });
 }

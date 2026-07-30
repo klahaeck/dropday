@@ -1,4 +1,5 @@
 import { tasks } from "@trigger.dev/sdk";
+import { normalizeDropReminderOffsets } from "@/lib/drop-reminder-settings";
 import { integrations } from "@/lib/env";
 import type { DropSlot } from "@/types/domain";
 
@@ -11,7 +12,7 @@ export async function scheduleDropTasks(drop: DropSlot, reminderOffsetsMinutes: 
     { delay: new Date(drop.scheduledFor), idempotencyKey: `drop:${drop.occurrenceKey}` },
   );
   runIds.push(processHandle.id);
-  for (const offset of reminderOffsetsMinutes) {
+  for (const offset of normalizeDropReminderOffsets(reminderOffsetsMinutes)) {
     const runAt = new Date(new Date(drop.scheduledFor).getTime() - offset * 60_000);
     if (runAt <= new Date()) continue;
     const handle = await tasks.trigger(

@@ -10,6 +10,10 @@ import {
 } from "@/lib/club-description";
 import { CLUB_ACCENT_PATTERN } from "@/lib/club-accent";
 import { getDb, getMongoClient } from "@/lib/db";
+import {
+  isDropReminderOffset,
+  normalizeDropReminderOffsets,
+} from "@/lib/drop-reminder-settings";
 import { integrations } from "@/lib/env";
 import { getClubBySlug, getClubMemberships, createId } from "@/lib/repository";
 import { createAnchoredRecurrence, nextOccurrences, occurrenceKey } from "@/lib/scheduling";
@@ -28,6 +32,9 @@ const schema = z.object({
   timezone: z.string().min(3).max(80),
   frequency: z.enum(["daily", "weekly", "monthly"]),
   interval: z.coerce.number().int().min(1).max(52),
+  reminderOffsetsMinutes: z.array(
+    z.number().int().refine(isDropReminderOffset, "Choose a supported reminder time."),
+  ).max(2).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -69,22 +76,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   }
 
   const timestamp = new Date().toISOString();
-  const schedule = createAnchoredRecurrence({
+  const currentReminderOffsets = normalizeDropReminderOffsets(club.schedule.reminderOffsetsMinutes);
+  const reminderOffsetsMinutes = parsed.data.reminderOffsetsMinutes === undefined
+    ? currentReminderOffsets
+    : normalizeDropReminderOffsets(parsed.data.reminderOffsetsMinutes);
+  const candidateSchedule = createAnchoredRecurrence({
     timezone: parsed.data.timezone,
     startsOn: parsed.data.startsOn,
     localTime: parsed.data.localTime,
     frequency: parsed.data.frequency,
     interval: parsed.data.interval,
-    reminderOffsetsMinutes: club.schedule.reminderOffsetsMinutes,
-    version: club.schedule.version + 1,
+    reminderOffsetsMinutes,
+    version: club.schedule.version,
     paused: club.schedule.paused,
   });
-  const scheduleChanged = schedule.timezone !== club.schedule.timezone
-    || schedule.startsOn !== club.schedule.startsOn
-    || schedule.localTime !== club.schedule.localTime
-    || schedule.frequency !== club.schedule.frequency
-    || schedule.interval !== club.schedule.interval
-    || schedule.rrule !== club.schedule.rrule;
+  const scheduleChanged = candidateSchedule.timezone !== club.schedule.timezone
+    || candidateSchedule.startsOn !== club.schedule.startsOn
+    || candidateSchedule.localTime !== club.schedule.localTime
+    || candidateSchedule.frequency !== club.schedule.frequency
+    || candidateSchedule.interval !== club.schedule.interval
+    || candidateSchedule.rrule !== club.schedule.rrule;
+  const remindersChanged = reminderOffsetsMinutes.length !== currentReminderOffsets.length
+    || reminderOffsetsMinutes.some((offset, index) => offset !== currentReminderOffsets[index]);
+  const schedulingChanged = scheduleChanged || remindersChanged;
+  const schedule = {
+    ...candidateSchedule,
+    version: schedulingChanged ? club.schedule.version + 1 : club.schedule.version,
+  };
   const setValues: Record<string, unknown> = {
     name: parsed.data.name,
     description,
@@ -104,17 +122,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     const db = await getDb();
     const client = await getMongoClient();
     await client.withSession(async (session) => session.withTransaction(async () => {
-      if (scheduleChanged) {
-        const nextDate = nextOccurrences(schedule, new Date(Date.now() - 1000), 1)[0];
-        if (!nextDate) throw new Error("Could not find the next drop date.");
-
+      if (schedulingChanged) {
         const activeDrop = club.activeDropId
           ? await db.collection<DropSlot>("drops").findOne({ id: club.activeDropId }, { session })
           : null;
-        const assignedUserId = activeDrop?.assignedUserId ?? club.rotationMemberIds[0];
-        if (!assignedUserId) throw new Error("This club has no active queue member.");
+        const nextDate = scheduleChanged
+          ? nextOccurrences(schedule, new Date(Date.now() - 1000), 1)[0]
+          : activeDrop?.status === "scheduled"
+            ? new Date(activeDrop.scheduledFor)
+            : undefined;
+        if (scheduleChanged && !nextDate) throw new Error("Could not find the next drop date.");
 
-        if (activeDrop && (activeDrop.status === "scheduled" || activeDrop.status === "overdue")) {
+        if (nextDate && activeDrop && (activeDrop.status === "scheduled" || (scheduleChanged && activeDrop.status === "overdue"))) {
           dropToSchedule = {
             ...activeDrop,
             occurrenceKey: occurrenceKey(club.id, nextDate, schedule.version),
@@ -138,7 +157,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
             },
             { session },
           );
-        } else {
+        } else if (nextDate) {
+          const assignedUserId = activeDrop?.assignedUserId ?? club.rotationMemberIds[0];
+          if (!assignedUserId) throw new Error("This club has no active queue member.");
           dropToSchedule = {
             id: createId("drop"),
             clubId: club.id,
@@ -154,7 +175,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
         }
 
         setValues.schedule = schedule;
-        setValues.activeDropId = dropToSchedule.id;
+        if (dropToSchedule) setValues.activeDropId = dropToSchedule.id;
       }
 
       const update = {
@@ -193,7 +214,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     descriptionHtml,
     accent: parsed.data.accent,
     clubImageUrl: parsed.data.clubImageUrl,
-    schedule: scheduleChanged ? schedule : club.schedule,
+    schedule: schedulingChanged ? schedule : club.schedule,
     warning: schedulingWarning,
   });
 }

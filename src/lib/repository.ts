@@ -129,6 +129,46 @@ export async function countUnreadNotifications(userId: string): Promise<number> 
   return (await getDb()).collection<Notification>("notifications").countDocuments({ userId, readAt: { $exists: false } });
 }
 
+export async function markNotificationRead(
+  userId: string,
+  notificationId: string,
+  readAt = new Date().toISOString(),
+): Promise<boolean> {
+  if (!integrations.mongo) {
+    const notification = demoNotifications.find((item) => item.id === notificationId && item.userId === userId);
+    if (!notification || notification.readAt) return false;
+    notification.readAt = readAt;
+    return true;
+  }
+
+  const result = await (await getDb()).collection<Notification>("notifications").updateOne(
+    { id: notificationId, userId, readAt: { $exists: false } },
+    { $set: { readAt } },
+  );
+  return result.modifiedCount === 1;
+}
+
+export async function markAllNotificationsRead(
+  userId: string,
+  readAt = new Date().toISOString(),
+): Promise<number> {
+  if (!integrations.mongo) {
+    let updatedCount = 0;
+    for (const notification of demoNotifications) {
+      if (notification.userId !== userId || notification.readAt) continue;
+      notification.readAt = readAt;
+      updatedCount += 1;
+    }
+    return updatedCount;
+  }
+
+  const result = await (await getDb()).collection<Notification>("notifications").updateMany(
+    { userId, readAt: { $exists: false } },
+    { $set: { readAt } },
+  );
+  return result.modifiedCount;
+}
+
 export async function listMessages(threadType: "club" | "drop", threadId: string): Promise<ChatMessage[]> {
   if (!integrations.mongo) return demoMessages.filter((item) => item.threadType === threadType && item.threadId === threadId);
   const messages = await (await getDb()).collection<ChatMessage>("messages")
