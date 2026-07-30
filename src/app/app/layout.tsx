@@ -5,6 +5,7 @@ import { AppNav } from "@/components/app-nav";
 import { BrowserNotificationRegistration } from "@/components/browser-notifications";
 import { MobileAppHeader } from "@/components/mobile-app-header";
 import { SkinProfileSync } from "@/components/skin-provider";
+import { TemporaryNameNotice } from "@/components/temporary-name-notice";
 import { ThemeProfileSync } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { requireViewer } from "@/lib/auth";
@@ -41,7 +42,14 @@ export default async function ApplicationLayout({ children }: { children: ReactN
         clerkEnabled={integrations.clerk}
         isSuperAdmin={viewer.isSuperAdmin}
       />
-      <main className="app-main"><div className="app-main-inner">{children}</div></main>
+      <main className="app-main">
+        <div className="app-main-inner">
+          {!viewer.isDemo && integrations.clerk && viewer.profile.generatedNameKey && (
+            <TemporaryNameNotice />
+          )}
+          {children}
+        </div>
+      </main>
     </SidebarProvider>
   );
 }

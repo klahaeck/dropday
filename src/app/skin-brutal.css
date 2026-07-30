@@ -513,6 +513,11 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .app-shell[data-state="collapsed"] .app-sidebar .sidebar-user { display: flex; justify-content: center; gap: 0; }
 :root:where([data-skin]:not([data-skin="classic"])) .app-main { min-width: 0; padding: 32px 40px 80px; }
 :root:where([data-skin]:not([data-skin="classic"])) .app-main-inner { max-width: 1320px; margin: auto; }
+:root:where([data-skin]:not([data-skin="classic"])) .temporary-name-notice { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-bottom: 30px; padding: 16px 18px; color: var(--accent-ink); background: var(--orange-soft); border: 2px solid var(--edge); box-shadow: 4px 4px 0 var(--edge); }
+:root:where([data-skin]:not([data-skin="classic"])) .temporary-name-notice-icon { width: 42px; height: 42px; display: grid; place-items: center; background: var(--orange); border: 2px solid var(--edge); border-radius: 50%; }
+:root:where([data-skin]:not([data-skin="classic"])) .temporary-name-notice h2 { margin: 0 0 3px; font-size: 18px; }
+:root:where([data-skin]:not([data-skin="classic"])) .temporary-name-notice p { margin: 0; color: rgba(18, 18, 15, 0.7); font-size: 13px; line-height: 1.45; }
+:root:where([data-skin]:not([data-skin="classic"])) .temporary-name-notice .button { white-space: nowrap; }
 :root:where([data-skin]:not([data-skin="classic"])) .mobile-app-header { display: none; }
 :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-layer { display: none; }
 
@@ -1172,6 +1177,8 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
   :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-actions { display: grid; gap: 10px; }
   :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-panel .sidebar-settings { margin-top: 4px; }
   :root:where([data-skin]:not([data-skin="classic"])) .app-main { padding: 26px 18px 70px; }
+  :root:where([data-skin]:not([data-skin="classic"])) .temporary-name-notice { grid-template-columns: auto minmax(0, 1fr); margin-bottom: 24px; }
+  :root:where([data-skin]:not([data-skin="classic"])) .temporary-name-notice .button { grid-column: 1 / -1; justify-self: start; }
   :root:where([data-skin]:not([data-skin="classic"])) .page-header { display: grid; align-items: start; }
   :root:where([data-skin]:not([data-skin="classic"])) .page-actions { flex-wrap: wrap; }
   :root:where([data-skin]:not([data-skin="classic"])) .page-actions.dashboard-page-actions { display: none; }
