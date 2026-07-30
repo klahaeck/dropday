@@ -984,12 +984,12 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .form-section + .form-section { margin-top: 32px; padding-top: 28px; border-top: 2px solid var(--edge); }
 :root:where([data-skin]:not([data-skin="classic"])) .form-section h2 { font-size: 25px; }
 :root:where([data-skin]:not([data-skin="classic"])) .form-section > p { color: var(--muted); }
-:root:where([data-skin]:not([data-skin="classic"])) .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+:root:where([data-skin]:not([data-skin="classic"])) .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; }
 :root:where([data-skin]:not([data-skin="classic"])) .theme-fields-grid { grid-template-columns: 1fr; }
-:root:where([data-skin]:not([data-skin="classic"])) .field { display: grid; gap: 7px; }
+:root:where([data-skin]:not([data-skin="classic"])) .field { min-width: 0; display: grid; gap: 7px; }
 :root:where([data-skin]:not([data-skin="classic"])) .field-full { grid-column: 1 / -1; }
 :root:where([data-skin]:not([data-skin="classic"])) .field label { font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-:root:where([data-skin]:not([data-skin="classic"])) .field input, :root:where([data-skin]:not([data-skin="classic"])) .field textarea, :root:where([data-skin]:not([data-skin="classic"])) .field select { width: 100%; padding: 12px 13px; color: var(--ink); background: var(--white); border: 2px solid var(--edge-strong); outline: none; }
+:root:where([data-skin]:not([data-skin="classic"])) .field input, :root:where([data-skin]:not([data-skin="classic"])) .field textarea, :root:where([data-skin]:not([data-skin="classic"])) .field select { width: 100%; min-width: 0; max-width: 100%; padding: 12px 13px; color: var(--ink); background: var(--white); border: 2px solid var(--edge-strong); outline: none; }
 :root:where([data-skin]:not([data-skin="classic"])) .field textarea { min-height: 110px; resize: vertical; }
 :root:where([data-skin]:not([data-skin="classic"])) .field input:focus, :root:where([data-skin]:not([data-skin="classic"])) .field textarea:focus, :root:where([data-skin]:not([data-skin="classic"])) .field select:focus { box-shadow: 3px 3px 0 var(--focus); }
 :root:where([data-skin]:not([data-skin="classic"])) .field > small { color: var(--muted); font-size: 11px; }
