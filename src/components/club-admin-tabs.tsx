@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ListOrdered, PackageOpen, Palette, Settings } from "lucide-react";
+import { ListOrdered, PackageOpen, Palette, Settings, UsersRound } from "lucide-react";
 
 export function ClubAdminTabs({
   clubSlug,
@@ -7,7 +7,7 @@ export function ClubAdminTabs({
   memberCount,
 }: {
   clubSlug: string;
-  active: "settings" | "themes" | "backups" | "queue";
+  active: "settings" | "members" | "themes" | "backups" | "queue";
   memberCount: number;
 }) {
   const settingsHref = `/app/clubs/${clubSlug}/settings`;
@@ -21,6 +21,17 @@ export function ClubAdminTabs({
       >
         <Settings size={16} aria-hidden="true" />
         Settings
+      </Link>
+      <Link
+        className={`club-admin-tab${active === "members" ? " club-admin-tab-active" : ""}`}
+        href={`${settingsHref}/members`}
+        aria-current={active === "members" ? "page" : undefined}
+      >
+        <UsersRound size={16} aria-hidden="true" />
+        Members
+        <span className="club-admin-tab-count" aria-label={`${memberCount} members`}>
+          {memberCount}
+        </span>
       </Link>
       <Link
         className={`club-admin-tab${active === "themes" ? " club-admin-tab-active" : ""}`}
@@ -45,9 +56,6 @@ export function ClubAdminTabs({
       >
         <ListOrdered size={16} aria-hidden="true" />
         Queue
-        <span className="club-admin-tab-count" aria-label={`${memberCount} members`}>
-          {memberCount}
-        </span>
       </Link>
     </nav>
   );

@@ -3,6 +3,7 @@ import OpenGraphImage from "@/app/opengraph-image";
 import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
 import TwitterImage from "@/app/twitter-image";
+import { CLERK_FRONTEND_API_PROXY_PATH } from "@/lib/clerk-proxy";
 import {
   publicPageMetadata,
   siteOrigin,
@@ -37,6 +38,7 @@ describe("site metadata routes", () => {
       "/app",
       "/sign-in",
       "/sign-up",
+      `${CLERK_FRONTEND_API_PROXY_PATH}/`,
     ]));
     expect(output.sitemap).toBe(`${siteOrigin()}/sitemap.xml`);
   });

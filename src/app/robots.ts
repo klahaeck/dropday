@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { CLERK_FRONTEND_API_PROXY_PATH } from "@/lib/clerk-proxy";
 import { absoluteSiteUrl, siteOrigin } from "@/lib/metadata";
 
 export default function robots(): MetadataRoute.Robots {
@@ -11,7 +12,7 @@ export default function robots(): MetadataRoute.Robots {
         "/app",
         "/sign-in",
         "/sign-up",
-        "/__clerk/",
+        `${CLERK_FRONTEND_API_PROXY_PATH}/`,
       ],
     },
     sitemap: absoluteSiteUrl("/sitemap.xml"),

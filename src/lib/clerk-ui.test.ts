@@ -3,12 +3,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const clerk = vi.hoisted(() => ({
+  providerProps: undefined as Record<string, unknown> | undefined,
   signInProps: undefined as Record<string, unknown> | undefined,
   signUpProps: undefined as Record<string, unknown> | undefined,
 }));
 
 vi.mock("@clerk/nextjs", () => ({
-  ClerkProvider: () => null,
+  ClerkProvider: (props: Record<string, unknown>) => {
+    clerk.providerProps = props;
+    return null;
+  },
   PricingTable: () => null,
   SignIn: (props: Record<string, unknown>) => {
     clerk.signInProps = props;
@@ -21,11 +25,23 @@ vi.mock("@clerk/nextjs", () => ({
   UserButton: () => null,
 }));
 
+vi.mock("@clerk/clerk-js/no-rhc", () => ({
+  Clerk: function MockClerk() {},
+}));
+
 vi.mock("@clerk/ui", () => ({
   ui: {},
 }));
 
-import { ClerkSignIn, ClerkSignUp } from "@/components/clerk-ui";
+vi.mock("@/components/skin-provider", () => ({
+  useSkin: () => ({ skin: "classic" }),
+}));
+
+vi.mock("@/components/theme-provider", () => ({
+  useTheme: () => ({ resolvedTheme: "light" }),
+}));
+
+import { AuthProvider, ClerkSignIn, ClerkSignUp } from "@/components/clerk-ui";
 
 const expectedClerkAuthAppearance = {
   elements: {
@@ -61,8 +77,24 @@ const expectedClerkAuthAppearance = {
 
 describe("Clerk authentication redirects", () => {
   beforeEach(() => {
+    clerk.providerProps = undefined;
     clerk.signInProps = undefined;
     clerk.signUpProps = undefined;
+  });
+
+  it("loads production Clerk components through the first-party proxy", () => {
+    renderToStaticMarkup(AuthProvider({
+      enabled: true,
+      publishableKey: "pk_live_dropday",
+      proxyUrl: "/auth-runtime",
+      children: createElement("div"),
+    }));
+
+    expect(clerk.providerProps).toMatchObject({
+      __internal_scriptsSlot: false,
+      publishableKey: "pk_live_dropday",
+      proxyUrl: "/auth-runtime",
+    });
   });
 
   it("uses the dashboard only when sign-in has no requested destination", () => {

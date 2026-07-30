@@ -123,7 +123,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body>
         <ThemeProvider>
           <SkinProvider>
-            <AuthProvider enabled={integrations.clerk} publishableKey={env.clerkPublishableKey}>
+            <AuthProvider
+              enabled={integrations.clerk}
+              publishableKey={env.clerkPublishableKey}
+              proxyUrl={env.clerkProxyUrl}
+            >
               {children}
             </AuthProvider>
           </SkinProvider>

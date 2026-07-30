@@ -8,6 +8,7 @@ export const env = {
   clerkPublishableKey: value("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"),
   clerkSecretKey: value("CLERK_SECRET_KEY"),
   clerkWebhookSecret: value("CLERK_WEBHOOK_SIGNING_SECRET"),
+  clerkProxyUrl: value("NEXT_PUBLIC_CLERK_PROXY_URL"),
   ablyApiKey: value("ABLY_API_KEY"),
   ablyEnabled: value("NEXT_PUBLIC_ABLY_ENABLED") === "true",
   triggerSecretKey: value("TRIGGER_SECRET_KEY"),

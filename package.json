@@ -17,6 +17,7 @@
     "trigger:deploy": "trigger.dev deploy"
   },
   "dependencies": {
+    "@clerk/clerk-js": "^6.25.12",
     "@clerk/nextjs": "latest",
     "@clerk/ui": "^1.26.0",
     "@dnd-kit/core": "^6.3.1",

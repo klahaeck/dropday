@@ -2,10 +2,12 @@
 
 import type { ReactNode } from "react";
 import type { SkinPreference } from "@/types/domain";
+import { Clerk } from "@clerk/clerk-js/no-rhc";
 import { ClerkProvider, PricingTable, SignIn, SignUp, UserButton } from "@clerk/nextjs";
 import { ui } from "@clerk/ui";
 import { useSkin } from "@/components/skin-provider";
 import { useTheme } from "@/components/theme-provider";
+import { clerkFrontendApiProxyUrl } from "@/lib/clerk-proxy";
 
 // Clerk renders in its own shadow tree, so it cannot pick up the skin scoping in
 // our stylesheets and has to be told which palette to use. Keyed by skin id, so
@@ -234,23 +236,40 @@ const clerkAuthAppearance = {
 export function AuthProvider({
   enabled,
   publishableKey,
+  proxyUrl,
   children,
 }: {
   enabled: boolean;
   publishableKey?: string;
+  proxyUrl?: string;
   children: ReactNode;
 }) {
   if (!enabled || !publishableKey) return children;
-  return <ClerkThemeProvider publishableKey={publishableKey}>{children}</ClerkThemeProvider>;
+  return (
+    <ClerkThemeProvider publishableKey={publishableKey} proxyUrl={proxyUrl}>
+      {children}
+    </ClerkThemeProvider>
+  );
 }
 
-function ClerkThemeProvider({ publishableKey, children }: { publishableKey: string; children: ReactNode }) {
+function ClerkThemeProvider({
+  publishableKey,
+  proxyUrl,
+  children,
+}: {
+  publishableKey: string;
+  proxyUrl?: string;
+  children: ReactNode;
+}) {
   const { resolvedTheme } = useTheme();
   const { skin } = useSkin();
 
   return (
     <ClerkProvider
+      Clerk={Clerk}
+      __internal_scriptsSlot={false}
       publishableKey={publishableKey}
+      proxyUrl={clerkFrontendApiProxyUrl(publishableKey, proxyUrl)}
       ui={ui}
       appearance={{ variables: clerkThemeVariables[skin][resolvedTheme] }}
     >
