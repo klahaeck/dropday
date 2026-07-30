@@ -249,12 +249,12 @@ export function ClerkPricing({ enabled }: { enabled: boolean }) {
 
 export function ClerkSignIn({ enabled }: { enabled: boolean }) {
   if (!enabled) return null;
-  return <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" forceRedirectUrl="/app" />;
+  return <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/app" />;
 }
 
 export function ClerkSignUp({ enabled }: { enabled: boolean }) {
   if (!enabled) return null;
-  return <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" forceRedirectUrl="/app" />;
+  return <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" fallbackRedirectUrl="/app" />;
 }
 
 export function ClerkUserMenu({ enabled }: { enabled: boolean }) {

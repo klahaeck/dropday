@@ -71,6 +71,13 @@ export async function getViewer(): Promise<Viewer | null> {
 
 export async function requireViewer(): Promise<Viewer> {
   const viewer = await getViewer();
-  if (!viewer) redirect("/sign-in");
+  if (!viewer) {
+    if (integrations.clerk) {
+      const { auth } = await import("@clerk/nextjs/server");
+      const session = await auth();
+      return session.redirectToSignIn();
+    }
+    redirect("/sign-in");
+  }
   return viewer;
 }
