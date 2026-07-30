@@ -990,6 +990,8 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .field-full { grid-column: 1 / -1; }
 :root:where([data-skin]:not([data-skin="classic"])) .field label { font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
 :root:where([data-skin]:not([data-skin="classic"])) .field input, :root:where([data-skin]:not([data-skin="classic"])) .field textarea, :root:where([data-skin]:not([data-skin="classic"])) .field select { width: 100%; min-width: 0; max-width: 100%; padding: 12px 13px; color: var(--ink); background: var(--white); border: 2px solid var(--edge-strong); outline: none; }
+:root:where([data-skin]:not([data-skin="classic"])) .field input[type="date"], :root:where([data-skin]:not([data-skin="classic"])) .field input[type="time"] { display: block; inline-size: 100%; min-inline-size: 0; max-inline-size: 100%; }
+:root:where([data-skin]:not([data-skin="classic"])) .field input[type="date"]::-webkit-date-and-time-value, :root:where([data-skin]:not([data-skin="classic"])) .field input[type="time"]::-webkit-date-and-time-value { min-width: 0; overflow: hidden; text-align: left; }
 :root:where([data-skin]:not([data-skin="classic"])) .field textarea { min-height: 110px; resize: vertical; }
 :root:where([data-skin]:not([data-skin="classic"])) .field input:focus, :root:where([data-skin]:not([data-skin="classic"])) .field textarea:focus, :root:where([data-skin]:not([data-skin="classic"])) .field select:focus { box-shadow: 3px 3px 0 var(--focus); }
 :root:where([data-skin]:not([data-skin="classic"])) .field > small { color: var(--muted); font-size: 11px; }
@@ -1183,7 +1185,7 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
   :root:where([data-skin]:not([data-skin="classic"])) .club-hero { padding: 24px; }
   :root:where([data-skin]:not([data-skin="classic"])) .club-hero:after { opacity: .35; }
   :root:where([data-skin]:not([data-skin="classic"])) .drop-meta-grid { grid-template-columns: 1fr; }
-  :root:where([data-skin]:not([data-skin="classic"])) .form-grid { grid-template-columns: 1fr; }
+  :root:where([data-skin]:not([data-skin="classic"])) .form-grid { grid-template-columns: minmax(0, 1fr); }
   :root:where([data-skin]:not([data-skin="classic"])) .drop-attachment-form { grid-template-columns: 1fr; }
   :root:where([data-skin]:not([data-skin="classic"])) .drop-attachment-actions { align-items: flex-start; flex-direction: column; }
   :root:where([data-skin]:not([data-skin="classic"])) .field-full { grid-column: auto; }
