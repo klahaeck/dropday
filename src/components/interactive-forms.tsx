@@ -5,13 +5,17 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { Bold, Check, ImagePlus, Italic, List, LoaderCircle, X } from "lucide-react";
+import { Bold, Check, ImagePlus, Italic, List, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import type { ArtworkKind } from "@/lib/blob-artwork";
 import { DEFAULT_CLUB_ACCENT, normalizeClubAccent } from "@/lib/club-accent";
 import { CLUB_DESCRIPTION_HTML_MAX_LENGTH, CLUB_DESCRIPTION_MAX_LENGTH, sanitizeClubDescriptionHtml } from "@/lib/club-description";
 import {
   DROP_REMINDER_OPTIONS,
+  getDropReminderFrequency,
+  isDropReminderOffset,
+  MAX_DROP_REMINDERS,
   normalizeDropReminderOffsets,
+  type DropReminderOffset,
 } from "@/lib/drop-reminder-settings";
 import { PLAYLIST_DESCRIPTION_HTML_MAX_LENGTH, PLAYLIST_DESCRIPTION_MAX_LENGTH } from "@/lib/playlist-description";
 import { getPlaylistVersions } from "@/lib/playlist-providers";
@@ -736,11 +740,41 @@ export function ClubSettingsForm({
   const [preparingImages, setPreparingImages] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<string>();
   const descriptionEditorRef = useRef<HTMLDivElement>(null);
+  const nextReminderId = useRef(MAX_DROP_REMINDERS);
+  const [reminderSelections, setReminderSelections] = useState<Array<{
+    id: number;
+    offset: DropReminderOffset | "";
+  }>>(() => normalizeDropReminderOffsets(schedule.reminderOffsetsMinutes)
+    .map((offset, index) => ({ id: index, offset })));
   const router = useRouter();
-  const reminderOffsets = normalizeDropReminderOffsets(schedule.reminderOffsetsMinutes);
 
   function imageBusy(busy: boolean) {
     setPreparingImages((count) => Math.max(0, count + (busy ? 1 : -1)));
+  }
+
+  function addReminder() {
+    setReminderSelections((current) => [
+      ...current,
+      { id: nextReminderId.current++, offset: "" },
+    ]);
+  }
+
+  function updateReminder(id: number, value: string) {
+    const offset = Number(value);
+    if (!isDropReminderOffset(offset)) return;
+    setReminderSelections((current) => {
+      const frequency = getDropReminderFrequency(offset);
+      if (current.some((selection) =>
+        selection.id !== id
+        && selection.offset !== ""
+        && getDropReminderFrequency(selection.offset) === frequency
+      )) return current;
+      return current.map((selection) => selection.id === id ? { ...selection, offset } : selection);
+    });
+  }
+
+  function removeReminder(id: number) {
+    setReminderSelections((current) => current.filter((selection) => selection.id !== id));
   }
 
   function updateDescription() {
@@ -785,7 +819,9 @@ export function ClubSettingsForm({
     setNotice(undefined);
     const form = new FormData(event.currentTarget);
     const reminderOffsetsMinutes = normalizeDropReminderOffsets(
-      form.getAll("reminderOffsetsMinutes").map(Number),
+      reminderSelections
+        .map((selection) => selection.offset)
+        .filter(isDropReminderOffset),
     );
     const uploadedUrls: string[] = [];
     let submissionStarted = false;
@@ -844,18 +880,50 @@ export function ClubSettingsForm({
           : "Dropday will remind the assigned member before their next drop."}
         {" "}Each reminder appears in Dropday and is also sent by browser push and email when the member has those channels enabled.
       </p>
-      <div className="form-grid">
-        {[0, 1].map((index) => <div className="field" key={index}>
-          <label htmlFor={`settings-drop-reminder-${index}`}>{index === 0 ? "First reminder" : "Second reminder"}</label>
-          <select
-            id={`settings-drop-reminder-${index}`}
-            name="reminderOffsetsMinutes"
-            defaultValue={reminderOffsets[index]?.toString() ?? ""}
+      <div className="drop-reminder-list">
+        {reminderSelections.length === 0 && <p className="drop-reminder-empty">No reminders set. Add one when you want Dropday to contact the assigned member.</p>}
+        {reminderSelections.map((selection, index) => <div className="drop-reminder-row" key={selection.id}>
+          <div className="field">
+            <label htmlFor={`settings-drop-reminder-${selection.id}`}>Reminder {index + 1}</label>
+            <select
+              id={`settings-drop-reminder-${selection.id}`}
+              name="reminderOffsetsMinutes"
+              value={selection.offset}
+              onChange={(event) => updateReminder(selection.id, event.target.value)}
+              required
+            >
+              <option value="" disabled>Choose a reminder time</option>
+              {DROP_REMINDER_OPTIONS.map((option) => <option
+                value={option.minutes}
+                key={option.minutes}
+                disabled={reminderSelections.some((other) =>
+                  other.id !== selection.id
+                  && other.offset !== ""
+                  && getDropReminderFrequency(other.offset) === option.frequency
+                )}
+              >{option.label}</option>)}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="button button-ghost button-small drop-reminder-remove"
+            aria-label={`Remove reminder ${index + 1}`}
+            onClick={() => removeReminder(selection.id)}
           >
-            <option value="">No reminder</option>
-            {DROP_REMINDER_OPTIONS.map((option) => <option value={option.minutes} key={option.minutes}>{option.label}</option>)}
-          </select>
+            <Trash2 size={15} />
+          </button>
         </div>)}
+        <div className="drop-reminder-actions">
+          <button
+            type="button"
+            className="button button-ghost button-small"
+            onClick={addReminder}
+            disabled={reminderSelections.length >= MAX_DROP_REMINDERS || reminderSelections.some((selection) => selection.offset === "")}
+          >
+            <Plus size={15} /> Add reminder
+          </button>
+          <span className="form-note">Add at most one weekly, daily, and hourly reminder.</span>
+        </div>
       </div>
     </section>
     {message && <p className="form-note form-error" role="alert">{message}</p>}

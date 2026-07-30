@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_DROP_REMINDER_OFFSETS,
   formatDropReminderOffset,
+  hasDuplicateDropReminderFrequencies,
   normalizeDropReminderOffsets,
 } from "@/lib/drop-reminder-settings";
 import { deliverDropReminder } from "@/lib/drop-reminders";
@@ -11,9 +12,15 @@ describe("drop reminder settings", () => {
     expect(normalizeDropReminderOffsets(undefined)).toEqual(DEFAULT_DROP_REMINDER_OFFSETS);
   });
 
-  it("deduplicates, validates, and orders two reminder offsets", () => {
-    expect(normalizeDropReminderOffsets([60, 1_440, 60, 42])).toEqual([1_440, 60]);
+  it("deduplicates, validates, and orders a dynamic reminder list", () => {
+    expect(normalizeDropReminderOffsets([60, 10_080, 1_440, 180, 60, 42]))
+      .toEqual([10_080, 1_440, 180]);
     expect(normalizeDropReminderOffsets([])).toEqual([]);
+  });
+
+  it("detects duplicate reminder frequencies for API validation", () => {
+    expect(hasDuplicateDropReminderFrequencies([2_880, 1_440])).toBe(true);
+    expect(hasDuplicateDropReminderFrequencies([10_080, 1_440, 180])).toBe(false);
   });
 
   it("formats reminder lead times for notification copy", () => {

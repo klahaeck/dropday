@@ -929,6 +929,11 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .field textarea { min-height: 110px; resize: vertical; }
 :root:where([data-skin]:not([data-skin="classic"])) .field input:focus, :root:where([data-skin]:not([data-skin="classic"])) .field textarea:focus, :root:where([data-skin]:not([data-skin="classic"])) .field select:focus { box-shadow: 3px 3px 0 var(--focus); }
 :root:where([data-skin]:not([data-skin="classic"])) .field > small { color: var(--muted); font-size: 11px; }
+:root:where([data-skin]:not([data-skin="classic"])) .drop-reminder-list { display: grid; gap: 12px; }
+:root:where([data-skin]:not([data-skin="classic"])) .drop-reminder-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 14px; background: var(--surface-subtle); border: 2px solid var(--edge); }
+:root:where([data-skin]:not([data-skin="classic"])) .drop-reminder-remove { width: 44px; height: 44px; justify-content: center; padding: 0; }
+:root:where([data-skin]:not([data-skin="classic"])) .drop-reminder-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+:root:where([data-skin]:not([data-skin="classic"])) .drop-reminder-empty { margin: 0; padding: 14px; color: var(--muted); background: var(--surface-subtle); border: 2px dashed var(--edge); font-size: 12px; }
 :root:where([data-skin]:not([data-skin="classic"])) .ritual-repeat-row { display: grid; grid-template-columns: auto 84px minmax(0, 1fr); align-items: center; gap: 9px; }
 :root:where([data-skin]:not([data-skin="classic"])) .ritual-repeat-row > span { color: var(--muted); font-size: 13px; font-weight: 600; }
 :root:where([data-skin]:not([data-skin="classic"])) .ritual-repeat-row input, :root:where([data-skin]:not([data-skin="classic"])) .ritual-repeat-row select { min-width: 0; }

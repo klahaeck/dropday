@@ -873,6 +873,11 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .field textarea { min-height: 110px; resize: vertical; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .field input:focus, :root:is(:not([data-skin]), [data-skin="classic"]) .field textarea:focus, :root:is(:not([data-skin]), [data-skin="classic"]) .field select:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--orange-soft); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .field > small { color: var(--muted); font-size: 11px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .drop-reminder-list { display: grid; gap: 12px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .drop-reminder-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 14px; background: var(--surface-subtle); border: 1px solid var(--line); border-radius: 8px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .drop-reminder-remove { width: 44px; height: 44px; justify-content: center; padding: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .drop-reminder-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .drop-reminder-empty { margin: 0; padding: 14px; color: var(--muted); background: var(--surface-subtle); border: 1px dashed var(--line); border-radius: 8px; font-size: 12px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .ritual-repeat-row { display: grid; grid-template-columns: auto 84px minmax(0, 1fr); align-items: center; gap: 9px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .ritual-repeat-row > span { color: var(--muted); font-size: 13px; font-weight: 750; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .ritual-repeat-row input, :root:is(:not([data-skin]), [data-skin="classic"]) .ritual-repeat-row select { min-width: 0; }

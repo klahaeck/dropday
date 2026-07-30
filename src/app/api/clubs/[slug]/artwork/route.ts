@@ -11,7 +11,9 @@ import {
 import { CLUB_ACCENT_PATTERN } from "@/lib/club-accent";
 import { getDb, getMongoClient } from "@/lib/db";
 import {
+  hasDuplicateDropReminderFrequencies,
   isDropReminderOffset,
+  MAX_DROP_REMINDERS,
   normalizeDropReminderOffsets,
 } from "@/lib/drop-reminder-settings";
 import { integrations } from "@/lib/env";
@@ -34,7 +36,13 @@ const schema = z.object({
   interval: z.coerce.number().int().min(1).max(52),
   reminderOffsetsMinutes: z.array(
     z.number().int().refine(isDropReminderOffset, "Choose a supported reminder time."),
-  ).max(2).optional(),
+  )
+    .max(MAX_DROP_REMINDERS)
+    .refine(
+      (offsets) => !hasDuplicateDropReminderFrequencies(offsets),
+      "Choose each reminder frequency only once.",
+    )
+    .optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ slug: string }> }) {

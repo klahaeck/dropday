@@ -53,4 +53,26 @@ describe("drop task scheduling", () => {
       expect.objectContaining({ idempotencyKey: `reminder:${drop.occurrenceKey}:60` }),
     );
   });
+
+  it("schedules every unique reminder frequency in a dynamic list", async () => {
+    trigger
+      .mockReset()
+      .mockResolvedValueOnce({ id: "process-run" })
+      .mockResolvedValueOnce({ id: "week-reminder-run" })
+      .mockResolvedValueOnce({ id: "day-reminder-run" })
+      .mockResolvedValueOnce({ id: "three-hour-reminder-run" });
+
+    await expect(scheduleDropTasks(drop, [10_080, 1_440, 180])).resolves.toEqual([
+      "process-run",
+      "week-reminder-run",
+      "day-reminder-run",
+      "three-hour-reminder-run",
+    ]);
+
+    expect(trigger.mock.calls.slice(1).map((call) => call[1])).toEqual([
+      { dropId: drop.id, scheduleVersion: drop.scheduleVersion, offsetMinutes: 10_080 },
+      { dropId: drop.id, scheduleVersion: drop.scheduleVersion, offsetMinutes: 1_440 },
+      { dropId: drop.id, scheduleVersion: drop.scheduleVersion, offsetMinutes: 180 },
+    ]);
+  });
 });
