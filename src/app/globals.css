@@ -1107,10 +1107,13 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .mobile-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .mobile-menu-close { width: 40px; height: 40px; display: grid; padding: 0; place-items: center; color: inherit; border: 1px solid var(--line); border-radius: 50%; background: transparent; cursor: pointer; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .mobile-menu-navigation { margin: 34px 0 22px; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .mobile-menu-actions { display: grid; gap: 10px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .mobile-menu-panel .sidebar-settings { margin-top: 4px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .app-main { padding: 28px 18px 70px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .page-header { display: grid; align-items: start; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .page-actions { flex-wrap: wrap; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .page-actions.dashboard-page-actions { display: none; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .stats-grid.dashboard-stats-grid { display: none; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .club-grid, :root:is(:not([data-skin]), [data-skin="classic"]) .playlist-grid, :root:is(:not([data-skin]), [data-skin="classic"]) .pricing-grid { grid-template-columns: 1fr; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .playlist-detail-hero { grid-template-columns: 1fr; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .playlist-detail-cover { max-width: 520px; }

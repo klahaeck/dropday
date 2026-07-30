@@ -156,9 +156,14 @@ export function MobileAppHeader({
                 </Link>
               ))}
             </nav>
-            <Link className="button button-dark button-full" href="/app/clubs/new" onClick={() => closeMenu()}>
-              <Plus size={16} /> New club
-            </Link>
+            <div className="mobile-menu-actions">
+              <Link className="button button-ghost button-full" href="/app/library" onClick={() => closeMenu()}>
+                Prepare a drop
+              </Link>
+              <Link className="button button-dark button-full" href="/app/clubs/new" onClick={() => closeMenu()}>
+                <Plus size={16} /> New club
+              </Link>
+            </div>
             <div className="sidebar-spacer" />
             {isDemo && (
               <div className="demo-note">

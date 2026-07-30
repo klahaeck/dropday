@@ -45,9 +45,9 @@ export default async function DashboardPage() {
   const assignmentTheme = assignmentClub?.currentTheme;
 
   return <>
-    <header className="page-header"><div><span className="section-kicker">Thursday, July 16</span><h1>Good afternoon, {profile.displayName.split(" ")[0]}.</h1><p>Your listening week is quiet for another minute. Here is what is coming.</p></div><div className="page-actions"><Link href="/app/library" className="button button-ghost">Prepare a drop</Link><Link href="/app/clubs/new" className="button button-dark"><Plus size={16} /> New club</Link></div></header>
+    <header className="page-header"><div><span className="section-kicker">Thursday, July 16</span><h1>Good afternoon, {profile.displayName.split(" ")[0]}.</h1><p>Your listening week is quiet for another minute. Here is what is coming.</p></div><div className="page-actions dashboard-page-actions"><Link href="/app/library" className="button button-ghost">Prepare a drop</Link><Link href="/app/clubs/new" className="button button-dark"><Plus size={16} /> New club</Link></div></header>
 
-    <div className="stats-grid">
+    <div className="stats-grid dashboard-stats-grid">
       <div className="stat-card stat-card-accent"><strong>{clubs.length}</strong><span>Active memberships</span></div>
       <div className="stat-card"><strong>{membership.joinLimit === null ? "∞" : membership.joinLimit}</strong><span>Membership allowance</span></div>
       <div className="stat-card"><strong>{ownership.ownedClubLimit === null ? "∞" : ownership.ownedClubLimit}</strong><span>Club ownership limit</span></div>

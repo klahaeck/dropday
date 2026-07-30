@@ -1169,10 +1169,13 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
   :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
   :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-close { width: 40px; height: 40px; display: grid; padding: 0; place-items: center; color: inherit; background: transparent; border: 2px solid var(--edge); border-radius: 50%; cursor: pointer; }
   :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-navigation { margin: 32px 0 22px; }
+  :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-actions { display: grid; gap: 10px; }
   :root:where([data-skin]:not([data-skin="classic"])) .mobile-menu-panel .sidebar-settings { margin-top: 4px; }
   :root:where([data-skin]:not([data-skin="classic"])) .app-main { padding: 26px 18px 70px; }
   :root:where([data-skin]:not([data-skin="classic"])) .page-header { display: grid; align-items: start; }
   :root:where([data-skin]:not([data-skin="classic"])) .page-actions { flex-wrap: wrap; }
+  :root:where([data-skin]:not([data-skin="classic"])) .page-actions.dashboard-page-actions { display: none; }
+  :root:where([data-skin]:not([data-skin="classic"])) .stats-grid.dashboard-stats-grid { display: none; }
   :root:where([data-skin]:not([data-skin="classic"])) .club-grid, :root:where([data-skin]:not([data-skin="classic"])) .playlist-grid, :root:where([data-skin]:not([data-skin="classic"])) .pricing-grid { grid-template-columns: 1fr; }
   :root:where([data-skin]:not([data-skin="classic"])) .playlist-detail-hero { grid-template-columns: 1fr; }
   :root:where([data-skin]:not([data-skin="classic"])) .playlist-detail-cover { max-width: 520px; box-shadow: 8px 8px 0 var(--orange); }
