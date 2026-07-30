@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, Shield } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { appNavigationItems } from "@/components/app-navigation-items";
@@ -19,7 +19,17 @@ import {
 import { integrations } from "@/lib/env";
 import type { UserProfile } from "@/types/domain";
 
-export function AppNav({ user, isDemo, unreadCount }: { user: UserProfile; isDemo: boolean; unreadCount: number }) {
+export function AppNav({
+  user,
+  isDemo,
+  isSuperAdmin,
+  unreadCount,
+}: {
+  user: UserProfile;
+  isDemo: boolean;
+  isSuperAdmin: boolean;
+  unreadCount: number;
+}) {
   return (
     <Sidebar>
       <SidebarHeader>
@@ -59,6 +69,16 @@ export function AppNav({ user, isDemo, unreadCount }: { user: UserProfile; isDem
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          {isSuperAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Super admin">
+                <Link href="/app/super-admin" className="sidebar-settings">
+                  <Shield size={17} />
+                  <span className="sidebar-menu-label">Super admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings">
               <Link href="/app/settings" className="sidebar-settings">

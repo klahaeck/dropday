@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Compass, Menu, Plus, Settings, X } from "lucide-react";
+import { Bell, Compass, Menu, Plus, Settings, Shield, X } from "lucide-react";
 import { appNavigationItems } from "@/components/app-navigation-items";
 import { Avatar } from "@/components/avatar";
 import { Brand } from "@/components/brand";
@@ -15,11 +15,13 @@ export function MobileAppHeader({
   isDemo,
   unreadCount,
   clerkEnabled,
+  isSuperAdmin,
 }: {
   user: UserProfile;
   isDemo: boolean;
   unreadCount: number;
   clerkEnabled: boolean;
+  isSuperAdmin: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuId = useId();
@@ -166,6 +168,11 @@ export function MobileAppHeader({
                   <small>Add service keys to go live.</small>
                 </span>
               </div>
+            )}
+            {isSuperAdmin && (
+              <Link href="/app/super-admin" className="sidebar-settings" onClick={() => closeMenu()}>
+                <Shield size={17} /> Super admin
+              </Link>
             )}
             <Link href="/app/settings" className="sidebar-settings" onClick={() => closeMenu()}>
               <Settings size={17} /> Settings

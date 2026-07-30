@@ -24,12 +24,18 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       <BrowserNotificationRegistration
         configured={!viewer.isDemo && integrations.mongo && integrations.browserPush && Boolean(env.vapidPublicKey)}
       />
-      <AppNav user={viewer.profile} isDemo={viewer.isDemo} unreadCount={unreadCount} />
+      <AppNav
+        user={viewer.profile}
+        isDemo={viewer.isDemo}
+        isSuperAdmin={viewer.isSuperAdmin}
+        unreadCount={unreadCount}
+      />
       <MobileAppHeader
         user={viewer.profile}
         isDemo={viewer.isDemo}
         unreadCount={unreadCount}
         clerkEnabled={integrations.clerk}
+        isSuperAdmin={viewer.isSuperAdmin}
       />
       <main className="app-main"><div className="app-main-inner">{children}</div></main>
     </SidebarProvider>

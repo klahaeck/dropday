@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   CLERK_FEATURES,
+  complimentaryPlanFromPrivateMetadata,
   featureAccessForPlan,
   featureAccessFromClerkChecks,
   getMembershipEntitlement,
   getOwnershipEntitlement,
   highestPlan,
+  isComplimentaryPlanKey,
   planFromClerkChecks,
   planFromPrivateMetadata,
 } from "@/lib/entitlements";
@@ -69,6 +71,13 @@ describe("complimentary plans", () => {
   it("accepts configured plan keys without case sensitivity", () => {
     expect(planFromPrivateMetadata({ complimentaryPlan: "Selector" })).toBe("entry");
     expect(planFromPrivateMetadata({ complimentaryPlan: "RESIDENT_UNLIMITED" })).toBe("highest");
+  });
+
+  it("returns the Clerk metadata key for administration", () => {
+    expect(complimentaryPlanFromPrivateMetadata({ complimentaryPlan: "Resident" })).toBe("resident");
+    expect(complimentaryPlanFromPrivateMetadata({ complimentaryPlan: "unknown" })).toBeNull();
+    expect(isComplimentaryPlanKey("resident_unlimited")).toBe(true);
+    expect(isComplimentaryPlanKey("highest")).toBe(false);
   });
 
   it("ignores unknown or malformed private metadata plans", () => {

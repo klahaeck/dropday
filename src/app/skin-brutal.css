@@ -1016,6 +1016,36 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .theme-option:hover { color: var(--ink); background: var(--white); }
 :root:where([data-skin]:not([data-skin="classic"])) .theme-option[aria-pressed="true"] { color: var(--on-solid); background: var(--solid); }
 :root:where([data-skin]:not([data-skin="classic"])) .theme-option:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-security-note { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; color: var(--muted); background: var(--surface); border: 2px solid var(--edge); font-family: var(--font-mono), ui-monospace, monospace; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-panel { padding: 0; overflow: hidden; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px; background: var(--surface-subtle); border-bottom: 2px solid var(--edge); }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-toolbar > p { flex: 0 0 auto; margin: 0; color: var(--muted); font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-search { min-width: 0; display: flex; flex: 1; align-items: center; gap: 8px; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-search > svg { flex: 0 0 auto; color: var(--muted); }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-search input { min-width: 220px; width: min(480px, 100%); padding: 10px 12px; color: var(--ink); background: var(--white); border: 2px solid var(--edge-strong); outline: none; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-search input:focus { box-shadow: 3px 3px 0 var(--focus); }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-table-scroll { overflow-x: auto; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-table { width: 100%; min-width: 900px; border-collapse: collapse; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-table th { padding: 11px 16px; color: var(--muted); background: var(--paper-deep); border-bottom: 2px solid var(--edge-strong); font-family: var(--font-mono), ui-monospace, monospace; font-size: 9px; font-weight: 700; letter-spacing: .1em; text-align: left; text-transform: uppercase; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-table td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-table tbody tr:last-child td { border-bottom: 0; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-table time, :root:where([data-skin]:not([data-skin="classic"])) .super-admin-muted { color: var(--muted); font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px; white-space: nowrap; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-user { min-width: 250px; display: flex; align-items: center; gap: 12px; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-user > div { min-width: 0; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-user strong, :root:where([data-skin]:not([data-skin="classic"])) .super-admin-user span, :root:where([data-skin]:not([data-skin="classic"])) .super-admin-user small { display: block; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-user span { max-width: 260px; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-user small { max-width: 260px; margin-top: 2px; overflow: hidden; color: var(--muted); font-family: var(--font-mono), ui-monospace, monospace; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-plan-control { min-width: 300px; display: grid; gap: 6px; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-plan-form { display: flex; align-items: center; gap: 8px; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-plan-form select { min-width: 190px; flex: 1; padding: 10px 11px; color: var(--ink); background: var(--white); border: 2px solid var(--edge-strong); outline: none; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-plan-form select:focus { box-shadow: 3px 3px 0 var(--focus); }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-plan-error { max-width: 300px; color: var(--danger); font-family: var(--font-mono), ui-monospace, monospace; font-size: 9px; line-height: 1.35; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-empty { padding: 70px 24px; text-align: center; background: repeating-linear-gradient(45deg, var(--surface-subtle) 0 11px, var(--paper) 11px 22px); }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-empty h2 { margin-bottom: 8px; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-empty p { margin: 0; color: var(--muted); }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-pagination { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 16px 20px; background: var(--surface-subtle); border-top: 2px solid var(--edge); }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-pagination > :last-child { justify-self: end; }
+:root:where([data-skin]:not([data-skin="classic"])) .super-admin-pagination > span { color: var(--muted); font-family: var(--font-mono), ui-monospace, monospace; font-size: 10px; }
 
 @media (max-width: 1100px) {
   :root:where([data-skin]:not([data-skin="classic"])) .hero { grid-template-columns: 1fr .75fr; }
@@ -1071,6 +1101,9 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
   :root:where([data-skin]:not([data-skin="classic"])) .next-drop { grid-template-columns: 1fr; }
   :root:where([data-skin]:not([data-skin="classic"])) .next-drop-art { min-height: 190px; }
   :root:where([data-skin]:not([data-skin="classic"])) .settings-grid { grid-template-columns: 1fr; }
+  :root:where([data-skin]:not([data-skin="classic"])) .super-admin-toolbar { align-items: stretch; flex-direction: column; }
+  :root:where([data-skin]:not([data-skin="classic"])) .super-admin-search { flex-wrap: wrap; }
+  :root:where([data-skin]:not([data-skin="classic"])) .super-admin-search input { width: calc(100% - 25px); }
   :root:where([data-skin]:not([data-skin="classic"])) .club-hero { padding: 24px; }
   :root:where([data-skin]:not([data-skin="classic"])) .club-hero:after { opacity: .35; }
   :root:where([data-skin]:not([data-skin="classic"])) .drop-meta-grid { grid-template-columns: 1fr; }

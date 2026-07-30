@@ -957,6 +957,36 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .theme-option:hover { color: var(--ink); background: var(--surface-hover); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .theme-option[aria-pressed="true"] { color: var(--on-solid); background: var(--solid); box-shadow: 0 5px 16px rgba(0, 0, 0, 0.12); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .theme-option:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-security-note { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-panel { padding: 0; overflow: hidden; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px; border-bottom: 1px solid var(--line); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-toolbar > p { flex: 0 0 auto; margin: 0; color: var(--muted); font-size: 11px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-search { min-width: 0; display: flex; flex: 1; align-items: center; gap: 8px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-search > svg { flex: 0 0 auto; color: var(--muted); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-search input { min-width: 220px; width: min(480px, 100%); padding: 10px 12px; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 6px; outline: none; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-search input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--orange-soft); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-table-scroll { overflow-x: auto; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-table { width: 100%; min-width: 900px; border-collapse: collapse; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-table th { padding: 11px 16px; color: var(--muted); background: var(--surface-subtle); border-bottom: 1px solid var(--line); font-size: 9px; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-table td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-table tbody tr:last-child td { border-bottom: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-table time, :root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-muted { color: var(--muted); font-size: 11px; white-space: nowrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-user { min-width: 250px; display: flex; align-items: center; gap: 12px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-user > div { min-width: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-user strong, :root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-user span, :root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-user small { display: block; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-user span { max-width: 260px; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-user small { max-width: 260px; margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-plan-control { min-width: 300px; display: grid; gap: 6px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-plan-form { display: flex; align-items: center; gap: 8px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-plan-form select { min-width: 190px; flex: 1; padding: 10px 11px; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 6px; outline: none; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-plan-form select:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--orange-soft); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-plan-error { max-width: 300px; color: #b42318; font-size: 10px; line-height: 1.35; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-empty { padding: 70px 24px; text-align: center; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-empty h2 { margin-bottom: 8px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-empty p { margin: 0; color: var(--muted); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-pagination { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--line); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-pagination > :last-child { justify-self: end; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-pagination > span { color: var(--muted); font-size: 11px; }
 
 @media (max-width: 1100px) {
   :root:is(:not([data-skin]), [data-skin="classic"]) .hero { grid-template-columns: 1fr .75fr; }
@@ -1009,6 +1039,9 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .next-drop { grid-template-columns: 1fr; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .next-drop-art { min-height: 190px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .settings-grid { grid-template-columns: 1fr; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-toolbar { align-items: stretch; flex-direction: column; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-search { flex-wrap: wrap; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .super-admin-search input { width: calc(100% - 25px); }
   :root:is(:not([data-skin]), [data-skin="classic"]) .club-hero { padding: 25px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .club-hero:after { opacity: .35; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .drop-meta-grid { grid-template-columns: 1fr; }

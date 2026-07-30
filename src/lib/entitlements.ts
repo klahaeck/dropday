@@ -31,12 +31,22 @@ const PLAN_PRIORITY: Record<PlanKey, number> = {
   highest: 3,
 };
 
-const COMPLIMENTARY_PLAN_KEYS: Record<string, PlanKey> = {
-  free_user: "free",
-  selector: "entry",
-  resident: "middle",
-  resident_unlimited: "highest",
-};
+export const COMPLIMENTARY_PLANS = [
+  { key: "free_user", label: "Listener", plan: "free" },
+  { key: "selector", label: "Selector", plan: "entry" },
+  { key: "resident", label: "Resident", plan: "middle" },
+  { key: "resident_unlimited", label: "Resident Unlimited", plan: "highest" },
+] as const satisfies ReadonlyArray<{ key: string; label: string; plan: PlanKey }>;
+
+export type ComplimentaryPlanKey = typeof COMPLIMENTARY_PLANS[number]["key"];
+
+export const COMPLIMENTARY_PLAN_KEYS = COMPLIMENTARY_PLANS.map(
+  ({ key }) => key,
+) as [ComplimentaryPlanKey, ...ComplimentaryPlanKey[]];
+
+const COMPLIMENTARY_PLAN_BY_KEY = Object.fromEntries(
+  COMPLIMENTARY_PLANS.map(({ key, plan }) => [key, plan]),
+) as Record<ComplimentaryPlanKey, PlanKey>;
 
 export const PLAN_ENTITLEMENTS: Record<
   PlanKey,
@@ -48,13 +58,22 @@ export const PLAN_ENTITLEMENTS: Record<
   highest: { membershipLimit: null, ownedClubLimit: null },
 };
 
-export function planFromPrivateMetadata(metadata: unknown): PlanKey | null {
+export function complimentaryPlanFromPrivateMetadata(metadata: unknown): ComplimentaryPlanKey | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
   const complimentaryPlan = (metadata as Record<string, unknown>).complimentaryPlan;
   if (typeof complimentaryPlan !== "string") return null;
 
   const normalizedPlan = complimentaryPlan.trim().toLowerCase();
-  return COMPLIMENTARY_PLAN_KEYS[normalizedPlan] ?? null;
+  return isComplimentaryPlanKey(normalizedPlan) ? normalizedPlan : null;
+}
+
+export function isComplimentaryPlanKey(value: string): value is ComplimentaryPlanKey {
+  return COMPLIMENTARY_PLAN_KEYS.some((key) => key === value);
+}
+
+export function planFromPrivateMetadata(metadata: unknown): PlanKey | null {
+  const complimentaryPlan = complimentaryPlanFromPrivateMetadata(metadata);
+  return complimentaryPlan ? COMPLIMENTARY_PLAN_BY_KEY[complimentaryPlan] : null;
 }
 
 export function highestPlan(...plans: Array<PlanKey | null | undefined>): PlanKey {

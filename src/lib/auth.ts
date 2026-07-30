@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { hasSuperAdminAccess } from "@/lib/clerk-metadata";
 import { integrations } from "@/lib/env";
 import { demoUsers } from "@/lib/demo-data";
 import { getDb } from "@/lib/db";
@@ -17,12 +18,18 @@ export interface Viewer {
   profile: UserProfile;
   features: ProductFeatureAccess;
   isDemo: boolean;
+  isSuperAdmin: boolean;
 }
 
 export async function getViewer(): Promise<Viewer | null> {
   if (!integrations.clerk) {
     const profile = demoUsers[0];
-    return { profile, features: featureAccessForPlan(profile.plan), isDemo: true };
+    return {
+      profile,
+      features: featureAccessForPlan(profile.plan),
+      isDemo: true,
+      isSuperAdmin: false,
+    };
   }
 
   const [{ auth, currentUser }] = await Promise.all([import("@clerk/nextjs/server")]);
@@ -36,6 +43,7 @@ export async function getViewer(): Promise<Viewer | null> {
   const checkFeature = (featureSlug: string) => session.has({ feature: featureSlug });
   const clerkPlan = planFromClerkChecks(checkPlan, checkFeature);
   const complimentaryPlan = planFromPrivateMetadata(clerkUser.privateMetadata);
+  const isSuperAdmin = hasSuperAdminAccess(clerkUser.privateMetadata);
   const plan = highestPlan(clerkPlan, complimentaryPlan);
   const features = featureAccessFromClerkChecks(checkFeature, clerkPlan, complimentaryPlan);
   const timestamp = new Date().toISOString();
@@ -66,7 +74,7 @@ export async function getViewer(): Promise<Viewer | null> {
       { upsert: true },
     );
   }
-  return { profile, features, isDemo: false };
+  return { profile, features, isDemo: false, isSuperAdmin };
 }
 
 export async function requireViewer(): Promise<Viewer> {
