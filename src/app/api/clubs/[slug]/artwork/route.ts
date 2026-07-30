@@ -9,6 +9,7 @@ import {
   sanitizeClubDescriptionHtml,
 } from "@/lib/club-description";
 import { CLUB_ACCENT_PATTERN } from "@/lib/club-accent";
+import { canUseClubManagement } from "@/lib/club-management";
 import { getDb, getMongoClient } from "@/lib/db";
 import {
   hasDuplicateDropReminderFrequencies,
@@ -60,10 +61,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     return NextResponse.json({ error: `Keep the description to ${CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 });
   }
   const newArtwork = [parsed.data.clubImageUrl].filter((value): value is string => typeof value === "string");
-  if (!features.clubAdminTools || !features.customSchedules) {
-    await Promise.all(newArtwork.map(discardArtwork));
-    return NextResponse.json({ error: "Your current plan does not include club administration and scheduling tools." }, { status: 403 });
-  }
   if (parsed.data.clubImageUrl && !isOwnedArtworkUrl(parsed.data.clubImageUrl, "club", profile.id)) {
     return NextResponse.json({ error: "This club image does not belong to your account." }, { status: 403 });
   }
@@ -74,7 +71,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   }
   const memberships = await getClubMemberships(club.id);
   const membership = memberships.find((item) => item.userId === profile.id);
-  if (!membership || membership.role === "member") {
+  if (!canUseClubManagement(
+    membership,
+    features.clubAdminTools && features.customSchedules,
+  )) {
     await Promise.all(newArtwork.map(discardArtwork));
     return NextResponse.json({ error: "You cannot manage this club." }, { status: 403 });
   }

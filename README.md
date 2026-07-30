@@ -80,6 +80,12 @@ membership gates. Numeric ownership limits remain app policy derived from the
 stable plan or ownership-feature keys. Prices, currencies, and billing periods
 remain managed by Clerk and render through its pricing component.
 
+Club management is funded by the club owner: an active club `admin` may manage
+that existing club even when their personal user plan does not include
+`club_admin_tools`, `custom_schedules`, `club_themes`, or `backup_playlists`.
+Personal plan features still gate creating and owning clubs, and only the active
+owner may grant or remove admin access.
+
 Production Clerk traffic can use the first-party `/auth-runtime` proxy so
 privacy tools do not block Clerk's component bootstrap. Roll it out in this
 order to avoid interrupting authentication:

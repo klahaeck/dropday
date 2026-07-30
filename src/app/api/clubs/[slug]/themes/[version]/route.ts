@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
 import { discardArtwork, isOwnedArtworkUrl } from "@/lib/blob-artwork";
+import { canUseClubManagement } from "@/lib/club-management";
 import { listPastClubThemes } from "@/lib/club-theme-history";
 import { getDb } from "@/lib/db";
 import { integrations } from "@/lib/env";
@@ -39,10 +40,6 @@ export async function PATCH(
   if (parsed.data.imageUrl && !isOwnedArtworkUrl(parsed.data.imageUrl, "theme", profile.id)) {
     return NextResponse.json({ error: "This theme image does not belong to your account." }, { status: 403 });
   }
-  if (!features.clubAdminTools || !features.clubThemes) {
-    return NextResponse.json({ error: "Your current plan does not include club themes." }, { status: 403 });
-  }
-
   const sanitizedGuidanceHtml = sanitizeThemeDescriptionHtml(parsed.data.guidanceHtml);
   const guidance = sanitizedGuidanceHtml ? themeDescriptionToText(sanitizedGuidanceHtml) : parsed.data.guidance;
   const guidanceHtml = guidance && sanitizedGuidanceHtml ? sanitizedGuidanceHtml : undefined;
@@ -54,7 +51,10 @@ export async function PATCH(
   if (!club) return NextResponse.json({ error: "Club not found." }, { status: 404 });
   const memberships = await getClubMemberships(club.id);
   const membership = memberships.find((item) => item.userId === profile.id);
-  if (!membership || membership.role === "member") {
+  if (!canUseClubManagement(
+    membership,
+    features.clubAdminTools && features.clubThemes,
+  )) {
     return NextResponse.json({ error: "You cannot manage this club." }, { status: 403 });
   }
 

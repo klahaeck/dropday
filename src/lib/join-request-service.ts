@@ -1,4 +1,5 @@
 import { getDb, getMongoClient } from "@/lib/db";
+import { canUseClubManagement } from "@/lib/club-management";
 import {
   demoClubs,
   demoJoinRequests,
@@ -31,11 +32,7 @@ export function canManageJoinRequests(
   membership: ClubMembership | null | undefined,
   hasClubAdminTools: boolean,
 ): boolean {
-  return Boolean(
-    hasClubAdminTools
-    && membership?.status === "active"
-    && (membership.role === "owner" || membership.role === "admin"),
-  );
+  return canUseClubManagement(membership, hasClubAdminTools);
 }
 
 export function planJoinRequestApproval({
@@ -171,9 +168,6 @@ export async function decideJoinRequest({
   actorUserId: string;
   hasClubAdminTools: boolean;
 }): Promise<{ request: JoinRequest; membership?: ClubMembership; demo: boolean }> {
-  if (!hasClubAdminTools) {
-    throw new JoinRequestDecisionError("Your current plan does not include club administration.", 403);
-  }
   if (!integrations.mongo) {
     return decideDemoJoinRequest(requestId, decision, actorUserId, hasClubAdminTools);
   }

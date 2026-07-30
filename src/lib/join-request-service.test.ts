@@ -45,9 +45,10 @@ function membership(overrides: Partial<ClubMembership> = {}): ClubMembership {
 }
 
 describe("join-request decisions", () => {
-  it("allows only active owners or admins with club administration access", () => {
+  it("uses the club role to sponsor admin access while preserving owner feature gates", () => {
     expect(canManageJoinRequests(membership(), true)).toBe(true);
     expect(canManageJoinRequests(membership({ role: "admin" }), true)).toBe(true);
+    expect(canManageJoinRequests(membership({ role: "admin" }), false)).toBe(true);
     expect(canManageJoinRequests(membership({ role: "member" }), true)).toBe(false);
     expect(canManageJoinRequests(membership({ status: "removed" }), true)).toBe(false);
     expect(canManageJoinRequests(membership(), false)).toBe(false);

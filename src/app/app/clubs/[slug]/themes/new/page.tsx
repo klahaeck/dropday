@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { NewClubThemeForm } from "@/components/interactive-forms";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { nextClubThemeVersion } from "@/lib/club-theme-history";
 import { getClubBySlug, getClubMemberships } from "@/lib/repository";
 
@@ -13,7 +14,10 @@ export default async function NewClubThemePage({ params }: { params: Promise<{ s
   const memberships = await getClubMemberships(club.id);
   const viewerMembership = memberships.find((item) => item.userId === profile.id);
   if (!viewerMembership || viewerMembership.role === "member") notFound();
-  if (!features.clubAdminTools || !features.clubThemes) redirect("/pricing");
+  if (!canUseClubManagement(
+    viewerMembership,
+    features.clubAdminTools && features.clubThemes,
+  )) redirect("/pricing");
 
   const cancelHref = `/app/clubs/${club.slug}/settings`;
   return <>

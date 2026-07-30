@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import { getClubBySlug, getClubMemberships } from "@/lib/repository";
@@ -32,20 +33,13 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: "Choose a valid queue state." }, { status: 400 });
   }
-  if (!features.clubAdminTools) {
-    return NextResponse.json(
-      { error: "Your current plan does not include club administration tools." },
-      { status: 403 },
-    );
-  }
-
   const club = await getClubBySlug(slug);
   if (!club) return NextResponse.json({ error: "Club not found." }, { status: 404 });
 
   const memberships = await getClubMemberships(club.id);
   const manager = memberships.find((membership) => membership.userId === profile.id);
   const target = memberships.find((membership) => membership.userId === memberId);
-  if (!manager || manager.role === "member") {
+  if (!canUseClubManagement(manager, features.clubAdminTools)) {
     return NextResponse.json({ error: "You cannot manage this club." }, { status: 403 });
   }
   if (!target) return NextResponse.json({ error: "Member not found." }, { status: 404 });
@@ -92,7 +86,7 @@ export async function PATCH(
         .toArray();
       const currentManager = currentMemberships.find((membership) => membership.userId === profile.id);
       const currentTarget = currentMemberships.find((membership) => membership.userId === memberId);
-      if (!currentManager || currentManager.role === "member") {
+      if (!canUseClubManagement(currentManager, features.clubAdminTools)) {
         outcome = { status: 403, error: "You cannot manage this club.", memberIds: currentClub.rotationMemberIds, paused };
         return;
       }

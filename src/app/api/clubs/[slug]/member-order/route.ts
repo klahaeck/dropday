@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { getDb } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import { hasSameMembers } from "@/lib/queue";
@@ -23,19 +24,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   if (!parsed.success) {
     return NextResponse.json({ error: "Choose a valid member order." }, { status: 400 });
   }
-  if (!features.clubAdminTools) {
-    return NextResponse.json(
-      { error: "Your current plan does not include club administration tools." },
-      { status: 403 },
-    );
-  }
-
   const club = await getClubBySlug(slug);
   if (!club) return NextResponse.json({ error: "Club not found." }, { status: 404 });
 
   const memberships = await getClubMemberships(club.id);
   const membership = memberships.find((item) => item.userId === profile.id);
-  if (!membership || membership.role === "member") {
+  if (!canUseClubManagement(membership, features.clubAdminTools)) {
     return NextResponse.json({ error: "You cannot manage this club." }, { status: 403 });
   }
 

@@ -5,8 +5,10 @@ import {
   ClubBackupError,
   recoverOverdueDropWithBackup,
 } from "@/lib/club-backups";
+import { canUseClubManagement } from "@/lib/club-management";
 import { recordDropTriggerRunIds } from "@/lib/drop-attachment";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { getClubBySlug, getClubMemberships } from "@/lib/repository";
 import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
 
 const schema = z.object({
@@ -20,9 +22,16 @@ export async function POST(
 ) {
   const { slug } = await params;
   const { profile, features } = await requireViewer();
-  if (!features.clubAdminTools || !features.backupPlaylists) {
+  const club = await getClubBySlug(slug);
+  if (!club) return NextResponse.json({ error: "Club not found." }, { status: 404 });
+  const memberships = await getClubMemberships(club.id);
+  const membership = memberships.find((item) => item.userId === profile.id);
+  if (!canUseClubManagement(
+    membership,
+    features.clubAdminTools && features.backupPlaylists,
+  )) {
     return NextResponse.json(
-      { error: "Your current plan does not include backup recovery." },
+      { error: "You cannot recover drops for this club." },
       { status: 403 },
     );
   }

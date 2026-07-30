@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { ClubAdminTabs } from "@/components/club-admin-tabs";
 import { ClubMembers } from "@/components/club-members";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { getClubBySlug, getClubMemberships, getUsersByIds } from "@/lib/repository";
 
 export default async function ClubMembersSettingsPage({
@@ -19,7 +20,7 @@ export default async function ClubMembersSettingsPage({
   const memberships = await getClubMemberships(club.id);
   const viewerMembership = memberships.find((membership) => membership.userId === profile.id);
   if (!viewerMembership || viewerMembership.role === "member") notFound();
-  if (!features.clubAdminTools) redirect("/pricing");
+  if (!canUseClubManagement(viewerMembership, features.clubAdminTools)) redirect("/pricing");
 
   const users = await getUsersByIds(memberships.map((membership) => membership.userId));
   const usersById = new Map(users.map((user) => [user.id, user]));

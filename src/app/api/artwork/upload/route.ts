@@ -16,9 +16,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         const kind = pathMatch[1];
         const canUpload = kind === "playlist"
           ? viewer.features.playlistLibrary
-          : kind === "theme"
-            ? viewer.features.clubThemes
-            : viewer.features.clubAdminTools;
+          // Club and theme mutations perform the role-aware authorization.
+          // Staging must also work for admins whose access comes from the club.
+          : true;
         if (!canUpload) throw new Error("Your current plan does not include this artwork feature.");
 
         return {

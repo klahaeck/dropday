@@ -6,6 +6,7 @@ import { CopyJoinLink } from "@/components/copy-join-link";
 import { ClubSettingsForm } from "@/components/interactive-forms";
 import { requireViewer } from "@/lib/auth";
 import { normalizeClubAccent } from "@/lib/club-accent";
+import { canUseClubManagement } from "@/lib/club-management";
 import { formatDateTime } from "@/lib/format";
 import {
   getClubBySlug,
@@ -22,7 +23,10 @@ export default async function ClubSettingsPage({ params }: { params: Promise<{ s
   const memberships = await getClubMemberships(club.id);
   const viewerMembership = memberships.find((item) => item.userId === profile.id);
   if (!viewerMembership || viewerMembership.role === "member") notFound();
-  if (!features.clubAdminTools || !features.customSchedules) redirect("/pricing");
+  if (!canUseClubManagement(
+    viewerMembership,
+    features.clubAdminTools && features.customSchedules,
+  )) redirect("/pricing");
   const activeDrop = club.activeDropId ? await getDropById(club.activeDropId) : null;
   const nextDrop = activeDrop?.status === "scheduled" ? activeDrop : null;
   const nextDropRecipient = nextDrop ? await getUserProfile(nextDrop.assignedUserId) : null;

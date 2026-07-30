@@ -13,6 +13,7 @@ import { Pill } from "@/components/pill";
 import { ThemePanel } from "@/components/theme-panel";
 import { requireViewer } from "@/lib/auth";
 import { getClubAccentForeground, normalizeClubAccent } from "@/lib/club-accent";
+import { canUseClubManagement } from "@/lib/club-management";
 import { canViewDropContent, hasDropReachedScheduledTime } from "@/lib/drop-visibility";
 import { integrations } from "@/lib/env";
 import { formatDateTime, formatDateTimeParts, scheduleLabel } from "@/lib/format";
@@ -42,8 +43,7 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
   const memberships = await getClubMemberships(club.id);
   const viewerMembership = memberships.find((item) => item.userId === profile.id);
   const isMember = Boolean(viewerMembership);
-  const hasClubRole = viewerMembership?.role === "owner" || viewerMembership?.role === "admin";
-  const canManage = hasClubRole && features.clubAdminTools;
+  const canManage = canUseClubManagement(viewerMembership, features.clubAdminTools);
 
   if (!isMember) {
     const pendingRequest = await getPendingJoinRequest(club.id, profile.id);

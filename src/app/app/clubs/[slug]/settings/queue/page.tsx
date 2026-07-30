@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { ClubAdminTabs } from "@/components/club-admin-tabs";
 import { MemberOrder } from "@/components/member-order";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { getClubBySlug, getClubMemberships, getUsersByIds } from "@/lib/repository";
 
 export default async function ClubQueueSettingsPage({
@@ -19,7 +20,10 @@ export default async function ClubQueueSettingsPage({
   const memberships = await getClubMemberships(club.id);
   const viewerMembership = memberships.find((item) => item.userId === profile.id);
   if (!viewerMembership || viewerMembership.role === "member") notFound();
-  if (!features.clubAdminTools || !features.customSchedules) redirect("/pricing");
+  if (!canUseClubManagement(
+    viewerMembership,
+    features.clubAdminTools && features.customSchedules,
+  )) redirect("/pricing");
 
   const users = await getUsersByIds(memberships.map((membership) => membership.userId));
   const membershipsByUserId = new Map(memberships.map((membership) => [membership.userId, membership]));

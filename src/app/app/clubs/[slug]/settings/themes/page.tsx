@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { ClubAdminTabs } from "@/components/club-admin-tabs";
 import { ClubThemesTable } from "@/components/club-themes-table";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { listPastClubThemes } from "@/lib/club-theme-history";
 import { getClubBySlug, getClubDrops, getClubMemberships } from "@/lib/repository";
 
@@ -23,7 +24,10 @@ export default async function ClubThemeSettingsPage({
   ]);
   const viewerMembership = memberships.find((item) => item.userId === profile.id);
   if (!viewerMembership || viewerMembership.role === "member") notFound();
-  if (!features.clubAdminTools || !features.customSchedules) redirect("/pricing");
+  if (!canUseClubManagement(
+    viewerMembership,
+    features.clubAdminTools && features.clubThemes,
+  )) redirect("/pricing");
 
   const pastThemes = listPastClubThemes(club, drops);
 

@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { ClubAdminTabs } from "@/components/club-admin-tabs";
 import { ClubBackups } from "@/components/club-backups";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { formatDateTime } from "@/lib/format";
 import {
   getClubBySlug,
@@ -27,7 +28,13 @@ export default async function ClubBackupSettingsPage({
   const memberships = await getClubMemberships(club.id);
   const viewerMembership = memberships.find((item) => item.userId === profile.id);
   if (!viewerMembership || viewerMembership.role === "member") notFound();
-  if (!features.clubAdminTools || !features.backupPlaylists || !features.playlistLibrary) {
+  if (
+    !features.playlistLibrary
+    || !canUseClubManagement(
+      viewerMembership,
+      features.clubAdminTools && features.backupPlaylists,
+    )
+  ) {
     redirect("/pricing");
   }
 

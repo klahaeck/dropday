@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { EditClubThemeForm } from "@/components/interactive-forms";
 import { requireViewer } from "@/lib/auth";
+import { canUseClubManagement } from "@/lib/club-management";
 import { listPastClubThemes } from "@/lib/club-theme-history";
 import { getClubBySlug, getClubDrops, getClubMemberships } from "@/lib/repository";
 
@@ -20,7 +21,10 @@ export default async function EditClubThemePage({
   const [memberships, drops] = await Promise.all([getClubMemberships(club.id), getClubDrops(club.id)]);
   const viewerMembership = memberships.find((item) => item.userId === profile.id);
   if (!viewerMembership || viewerMembership.role === "member") notFound();
-  if (!features.clubAdminTools || !features.clubThemes) redirect("/pricing");
+  if (!canUseClubManagement(
+    viewerMembership,
+    features.clubAdminTools && features.clubThemes,
+  )) redirect("/pricing");
 
   const theme = club.currentTheme?.version === version
     ? club.currentTheme
