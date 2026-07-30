@@ -539,6 +539,7 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .stat-card.stat-card-accent span { color: rgba(18, 18, 15, 0.7); }
 
 :root:where([data-skin]:not([data-skin="classic"])) .dashboard-grid { display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 18px; }
+:root:where([data-skin]:not([data-skin="classic"])) .dashboard-grid-listening-week { grid-template-columns: minmax(0, 1fr); }
 :root:where([data-skin]:not([data-skin="classic"])) .panel { padding: 22px; background: var(--surface); border: 2px solid var(--edge); }
 :root:where([data-skin]:not([data-skin="classic"])) .panel-orange { color: var(--accent-ink); background: var(--orange-soft); }
 :root:where([data-skin]:not([data-skin="classic"])) .panel-orange p { color: rgba(18, 18, 15, 0.7); }

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, Bell, CalendarDays, Plus, UsersRound } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { ClubCard } from "@/components/club-card";
@@ -56,12 +55,11 @@ export default async function DashboardPage() {
     </div>
 
     {assignment && assignmentClub && <div className="section-title-row"><h2>Your listening week</h2><Link href={`/app/clubs/${assignmentClub.slug}`}>Open club <ArrowRight size={13} /></Link></div>}
-    {assignment && assignmentClub && <section className="dashboard-grid">
+    {assignment && assignmentClub && <section className="dashboard-grid dashboard-grid-listening-week">
       <div className="panel next-drop">
         <div className="next-drop-art" />
         <div className="next-drop-copy"><div className="eyebrow-row"><Pill tone="orange"><CalendarDays size={12} /> Next drop</Pill><span className="tiny-label">{formatDateTime(assignment.scheduledFor, assignmentClub.schedule.timezone)}</span></div><h2>{assignmentPlaylist?.title ?? assignmentTheme?.name ?? "Freeform drop"}</h2>{assignmentPlaylist ? <PlaylistDescription html={assignmentPlaylist.descriptionHtml} fallback={assignmentPlaylist.description} /> : assignmentTheme ? <ThemeDescription html={assignmentTheme.guidanceHtml} fallback={assignmentTheme.guidance ?? ""} /> : <p>No shared theme this round. Choose the direction that feels right.</p>}<div className="countdown"><span><strong>04</strong><small>days</small></span><span><strong>18</strong><small>hours</small></span><span><strong>32</strong><small>minutes</small></span></div><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar user={assignedUser ?? undefined} /><strong>{assignment.assignedUserId === profile.id ? "You are dropping" : `${assignedUser?.displayName ?? "A member"} is dropping`}</strong></div></div>
       </div>
-      {assignmentTheme ? <aside className={`theme-card${assignmentTheme.imageUrl ? " theme-card-has-image" : ""}`}>{assignmentTheme.imageUrl && <Image src={assignmentTheme.imageUrl} alt="" fill sizes="(max-width: 800px) 100vw, 33vw" unoptimized />}<span className="pill pill-green">Current theme</span><h2>{assignmentTheme.name}</h2><ThemeDescription html={assignmentTheme.guidanceHtml} fallback={assignmentTheme.guidance ?? ""} /><div className="theme-card-foot"><span>{assignmentClub.name}</span><span>Theme #{assignmentTheme.version}</span></div></aside> : <aside className="theme-card"><span className="pill pill-orange">Freeform club</span><h2>No theme</h2><p>Each member chooses their own direction for the drop.</p><div className="theme-card-foot"><span>{assignmentClub.name}</span><span>Freeform</span></div></aside>}
     </section>}
 
     <div className="section-title-row"><h2>Your clubs</h2><Link href="/app/clubs">View all</Link></div>
