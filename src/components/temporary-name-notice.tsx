@@ -36,7 +36,7 @@ export function TemporaryNameNotice() {
         type="button"
         className="button button-dark button-small"
         disabled={!isLoaded}
-        onClick={() => clerk.openUserProfile({ __experimental_startPath: "/account" })}
+        onClick={() => clerk.openUserProfile({ __experimental_startPath: "/" })}
       >
         Update profile
       </button>
