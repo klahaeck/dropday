@@ -544,7 +544,7 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .panel-orange p { color: rgba(18, 18, 15, 0.7); }
 :root:where([data-skin]:not([data-skin="classic"])) .panel-orange .section-kicker { color: var(--accent-ink); }
 :root:where([data-skin]:not([data-skin="classic"])) .next-drop { display: grid; grid-template-columns: 190px 1fr; gap: 26px; }
-:root:where([data-skin]:not([data-skin="classic"])) .next-drop-art { position: relative; min-height: 240px; display: grid; place-items: center; background: var(--orange); border: 2px solid var(--accent-edge); overflow: hidden; }
+:root:where([data-skin]:not([data-skin="classic"])) .next-drop-art { position: relative; width: 100%; max-width: 190px; height: 190px; min-height: 0; max-height: 190px; aspect-ratio: 1; align-self: start; display: grid; place-items: center; background: var(--orange); border: 2px solid var(--accent-edge); overflow: hidden; }
 :root:where([data-skin]:not([data-skin="classic"])) .next-drop-art:before { content: ""; width: 130px; height: 130px; border: 34px solid var(--accent-ink); border-radius: 50%; }
 :root:where([data-skin]:not([data-skin="classic"])) .next-drop-art:after { content: ""; position: absolute; width: 18px; height: 18px; background: var(--orange); border-radius: 50%; }
 :root:where([data-skin]:not([data-skin="classic"])) .next-drop-copy h2 { margin: 14px 0 12px; font-size: 36px; }
@@ -916,8 +916,6 @@ html:where([data-skin]:not([data-skin="classic"])) { scroll-behavior: smooth; }
 :root:where([data-skin]:not([data-skin="classic"])) .chat-message-mine { grid-template-columns: minmax(0, 1fr); padding-left: 45px; }
 :root:where([data-skin]:not([data-skin="classic"])) .chat-message-mine > div { grid-column: 1; text-align: right; }
 :root:where([data-skin]:not([data-skin="classic"])) .chat-message-mine .chat-byline { justify-content: flex-end; }
-:root:where([data-skin]:not([data-skin="classic"])) .chat-panel-club .ui-bubble-secondary > .ui-bubble-content { color: var(--ink); background: color-mix(in srgb, var(--club-accent, var(--orange)) 12%, var(--paper)); }
-:root:where([data-skin]:not([data-skin="classic"])) .chat-panel-club .ui-bubble-default > .ui-bubble-content { color: var(--club-accent-ink, var(--accent-ink)); background: var(--club-accent, var(--orange)); border-color: var(--edge); }
 :root:where([data-skin]:not([data-skin="classic"])) .chat-bubble { margin-bottom: 19px; }
 :root:where([data-skin]:not([data-skin="classic"])) .reaction-row { gap: 4px; }
 :root:where([data-skin]:not([data-skin="classic"])) .reaction-row button, :root:where([data-skin]:not([data-skin="classic"])) .reaction-picker summary { display: inline-grid; min-width: 28px; height: 26px; place-items: center; padding: 0 7px; color: var(--ink); background: var(--white); border: 2px solid var(--edge); border-radius: 999px; cursor: pointer; font-size: 11px; }

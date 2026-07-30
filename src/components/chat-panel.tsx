@@ -14,7 +14,6 @@ import {
 } from "@/lib/chat-mentions";
 import { reconcileSentMessage } from "@/lib/chat-messages";
 import { toggleChatReaction } from "@/lib/chat-reactions";
-import { getClubAccentForeground, normalizeClubAccent } from "@/lib/club-accent";
 import type { ChatMessage } from "@/types/domain";
 
 const quickReactions = ["🔥", "💿", "❤️", "🫡"];
@@ -43,7 +42,6 @@ export function ChatPanel({
   currentUser,
   mentionableUsers,
   realtimeEnabled,
-  clubAccent,
 }: {
   threadType: "club" | "drop";
   threadId: string;
@@ -51,7 +49,6 @@ export function ChatPanel({
   currentUser: { id: string; displayName: string; initials: string };
   mentionableUsers: ChatMentionMember[];
   realtimeEnabled: boolean;
-  clubAccent?: string;
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState("");
@@ -224,10 +221,7 @@ export function ChatPanel({
   }
 
   return (
-    <section className={`chat-panel${threadType === "club" ? " chat-panel-club" : ""}`} style={threadType === "club" ? {
-      "--club-accent": normalizeClubAccent(clubAccent),
-      "--club-accent-ink": getClubAccentForeground(clubAccent),
-    } as React.CSSProperties : undefined}>
+    <section className="chat-panel">
       <header className="chat-header">
         <div><span className="section-kicker">Live room</span><h2>{threadType === "club" ? "Club chat" : "Drop chat"}</h2></div>
         <span className="presence"><Users size={14} /> {onlineCount} here</span>

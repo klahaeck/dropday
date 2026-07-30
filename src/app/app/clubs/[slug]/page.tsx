@@ -144,6 +144,6 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
           <td><Link className="past-drop-link" href={href} aria-label={`Open ${playlist.title}`}><span>View</span><ArrowUpRight size={15} /></Link></td>
         </tr>; })}</tbody>
       </table></div> : <div className="empty-state"><h2>The first drop is still ahead.</h2><p>This club’s archive begins when the first playlist publishes.</p></div>}
-    </div><aside id="club-chat"><ChatPanel threadType="club" threadId={club.id} initialMessages={messages} currentUser={{ id: profile.id, displayName: profile.displayName, initials: profile.initials }} mentionableUsers={chatMembers} realtimeEnabled={integrations.ably} clubAccent={accent} /></aside></div>
+    </div><aside id="club-chat"><ChatPanel threadType="club" threadId={club.id} initialMessages={messages} currentUser={{ id: profile.id, displayName: profile.displayName, initials: profile.initials }} mentionableUsers={chatMembers} realtimeEnabled={integrations.ably} /></aside></div>
   </>;
 }

@@ -1,54 +1,60 @@
 # Design QA
 
-- Source visual truth path: `/var/folders/j_/227fcrk94nx635nq6wr_p00w0000gp/T/TemporaryItems/NSIRD_screencaptureui_acc1aI/Screenshot 2026-07-30 at 10.22.54 AM.png`
-- Implementation screenshot path: `/Users/khaeck/Sites/Thesion/dropday/qa/neon-kicker-spacing-full.png`
-- Focused implementation crop: `/Users/khaeck/Sites/Thesion/dropday/qa/neon-kicker-spacing-focused.png`
-- Combined comparison: `/Users/khaeck/Sites/Thesion/dropday/qa/neon-kicker-spacing-comparison.png`
-- Viewport: 1280 × 720 CSS pixels at device scale 1.
-- Pixel dimensions: source 1148 × 38; implementation 1265 × 712; focused implementation 926 × 38; combined comparison 1148 × 80.
-- Density normalization: no resampling was applied. The focused implementation strip is centered on a source-width canvas so the colored marks and their adjacent labels remain at native scale.
-- State: desktop club detail in the Neon skin, showing Current theme, Next drop, and Live room cards.
+- Source visual truth path: `/Users/khaeck/Desktop/Screenshot 2026-07-30 at 11.15.07 AM.png`
+- Implementation screenshot path: `/Users/khaeck/Sites/Thesion/dropday/qa/dashboard-theme-art-square-eighties.png`
+- Viewport: 914 × 538 CSS pixels in Chrome at device scale 1.
+- Pixel dimensions: source 914 × 538; implementation 899 × 529.
+- Density normalization: no resampling was applied. The browser viewport was matched to the source dimensions, and the artwork was also checked from its browser-computed CSS box.
+- State: desktop dashboard in the Neon skin, scrolled to “Your listening week.” The source uses the signed-in account’s content; the implementation uses the credential-free demo fixture.
 
 ## Full-view comparison evidence
 
-The source contains only the three-card header strip, so the complete available source is itself the focused target. The browser-rendered full view confirms the same three headers remain aligned within the existing Neon card layout and that the spacing change does not disturb card sizing, card borders, typography, or surrounding content.
+The supplied source and the browser-rendered implementation were reviewed together at the same requested viewport. The source shows the 190px artwork column stretching to roughly the full height of the listening-week card. In the implementation, the same card preserves its existing borders, padding, copy column, and Neon styling while the artwork stops at a square 190 × 190 box.
+
+The implementation capture includes the app sidebar and demo data, while the supplied source is cropped to the main content and uses different account data. Those are expected state differences and were excluded from the layout judgment.
 
 ## Focused region comparison evidence
 
-The combined comparison stacks the source strip above the browser-rendered strip. In the source, the cyan shadow bar meets the first title character. In the implementation, each title begins after a small visible pocket. Browser-computed styles confirm a 12px flex gap, a 7px magenta mark, and an 8px-offset cyan shadow, leaving 4px of visible space after the cyan bar for Current theme, Next drop, and Live room.
+The artwork is the only requested fidelity surface, so no additional crop was needed: it is large and fully readable in both full-view images. Browser-computed evidence for `.next-drop-art` in the Neon skin is:
+
+- width: `190px`
+- height: `190px`
+- max-height: `190px`
+- aspect-ratio: `1 / 1`
+- align-self: `start`
 
 ## Findings
 
-No actionable P0, P1, or P2 differences remain for the requested spacing change.
+No actionable P0, P1, or P2 differences remain for the requested square artwork change.
 
-- Fonts and typography: the existing Neon display and mono typography, weights, sizes, tracking, and casing are unchanged.
-- Spacing and layout rhythm: all three visible kickers use the same 12px layout gap, producing a consistent 4px visual gap after the offset cyan bar.
-- Colors and visual tokens: the established magenta and cyan Neon tokens are unchanged.
-- Image quality and asset fidelity: no image or icon assets were added or replaced; the existing CSS-owned decorative mark is unchanged.
-- Copy and content: card titles and surrounding product copy are unchanged. The demo fixture shows theme version `#4` instead of the source’s `#1`, which is an expected data-state difference unrelated to layout.
+- Fonts and typography: unchanged; the existing Neon display and mono typography retain their family, weights, sizing, tracking, and wrapping.
+- Spacing and layout rhythm: the artwork is now top-aligned and square. The panel padding, grid gap, copy alignment, and card dimensions remain consistent.
+- Colors and visual tokens: unchanged; the existing Neon pink, cyan, dark surface, border, and shadow tokens remain intact.
+- Image quality and asset fidelity: the existing dashboard artwork keeps its subject, color, sharpness, and masking. Only its containing box changed from stretched to 190 × 190.
+- Copy and content: unchanged by the implementation. Demo copy differs from the source account’s copy as expected.
 
 ## Comparison history
 
-- Initial evidence: the offset cyan bar visually touched the following title because the shared 8px flex gap was fully consumed by the mark’s 8px box-shadow offset.
-- Fix: added a Neon-only 12px gap to `.section-kicker`.
-- Post-fix evidence: the focused browser capture and computed styles confirm a consistent 4px visible gap after the cyan bar across all three card titles.
+- Initial evidence: the supplied screenshot showed the 190px-wide artwork stretched to about 414px tall, materially changing the card’s proportions.
+- Fix: capped `.next-drop-art` at 190px, gave it a 1:1 aspect ratio, and top-aligned it in both the classic and alternate-skin foundations.
+- Post-fix evidence: the Neon browser capture and computed styles confirm a 190 × 190 artwork box with the copy column undisturbed.
 
 ## Primary interactions tested
 
-- Loaded the credential-free demo club detail route.
-- Rendered the club detail in the Neon skin.
-- Confirmed Current theme, Next drop, and Live room are visible together in the desktop card row.
+- Loaded the credential-free demo dashboard.
+- Changed the interface design to Neon through the settings UI.
+- Returned to the dashboard and confirmed the requested state at the source viewport.
 
 ## Console errors checked
 
-No browser console warnings or errors were reported in the verified state.
+No app console errors were reported in the verified dashboard state. Chrome retained one earlier Clerk development-key warning from the initial authenticated-preview attempt; it is unrelated to this CSS change and was absent from the credential-free demo server.
 
 ## Implementation checklist
 
-- [x] Keep the change scoped to the Neon skin.
-- [x] Preserve the colored marks and typography.
-- [x] Add a small, consistent visible gap before all section-kicker titles.
-- [x] Verify the three affected card headers in a browser.
-- [x] Confirm no browser console warnings or errors.
+- [x] Constrain dashboard artwork to a square.
+- [x] Preserve the existing card copy and spacing.
+- [x] Apply the constraint to classic and alternate skin foundations.
+- [x] Verify the Neon screenshot state in a browser.
+- [x] Confirm no related app console errors.
 
 final result: passed
