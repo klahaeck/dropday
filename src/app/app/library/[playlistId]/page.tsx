@@ -33,14 +33,12 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
     club,
     drops: await getClubDrops(club.id),
   })));
-  const timestamp = new Date().toISOString();
   const attachableDrops = dropsByClub.flatMap(({ club, drops }) => drops
     .filter((drop) =>
       drop.id === club.activeDropId
       && drop.assignedUserId === profile.id
-      && drop.status === "scheduled"
+      && (drop.status === "scheduled" || drop.status === "overdue")
       && drop.scheduleVersion === club.schedule.version
-      && drop.scheduledFor > timestamp
       && !club.schedule.paused
       && club.custody.status !== "archived"
     )
@@ -48,7 +46,9 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
       id: drop.id,
       clubName: club.name,
       scheduledFor: drop.scheduledFor,
-      scheduledLabel: formatDateTime(drop.scheduledFor, club.schedule.timezone),
+      scheduledLabel: drop.status === "overdue"
+        ? `Overdue since ${formatDateTime(drop.scheduledFor, club.schedule.timezone)}`
+        : formatDateTime(drop.scheduledFor, club.schedule.timezone),
       currentPlaylistTitle: drop.playlist?.title,
       currentPlaylistDraftId: drop.playlist?.sourceDraftId,
     })))

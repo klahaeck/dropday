@@ -87,10 +87,9 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
   const canAttachToActiveDrop = Boolean(
     activeDrop
     && activeDrop.id === club.activeDropId
-    && activeDrop.status === "scheduled"
+    && (activeDrop.status === "scheduled" || activeDrop.status === "overdue")
     && activeDrop.assignedUserId === profile.id
     && activeDrop.scheduleVersion === club.schedule.version
-    && activeDrop.scheduledFor > timestamp
     && !club.schedule.paused
     && club.custody.status !== "archived",
   );
@@ -108,7 +107,9 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
               drops={[{
                 id: activeDrop.id,
                 clubName: club.name,
-                scheduledLabel: formatDateTime(activeDrop.scheduledFor, club.schedule.timezone),
+                scheduledLabel: activeDrop.status === "overdue"
+                  ? `Overdue since ${formatDateTime(activeDrop.scheduledFor, club.schedule.timezone)}`
+                  : formatDateTime(activeDrop.scheduledFor, club.schedule.timezone),
                 currentPlaylistTitle: activeDrop.playlist?.title,
                 currentPlaylistDraftId: activeDrop.playlist?.sourceDraftId,
               }]}

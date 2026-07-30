@@ -115,11 +115,17 @@ export function DropAttachmentForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draftId: nextPlaylistId }),
       });
-      const result = (await response.json()) as { error?: string; warning?: string };
+      const result = (await response.json()) as {
+        error?: string;
+        warning?: string;
+        recovered?: boolean;
+      };
       if (!response.ok) throw new Error(result.error ?? "Could not attach this playlist.");
       setSelectedPlaylistId(nextPlaylistId);
       setState("saved");
-      setMessage(result.warning ?? `Ready for ${selectedDrop?.scheduledLabel ?? "the assigned drop time"}.`);
+      setMessage(result.warning ?? (result.recovered
+        ? "Published late. The club rotation is moving again."
+        : `Ready for ${selectedDrop?.scheduledLabel ?? "the assigned drop time"}.`));
       if (closeOnSuccess) closePlaylistSelector(true);
       router.refresh();
     } catch (error) {

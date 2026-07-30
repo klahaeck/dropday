@@ -711,6 +711,33 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-admin-queue-header h2 { margin: 5px 0 7px; font-size: 32px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-admin-queue-header p { margin: 0; color: var(--muted); font-size: 13px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .club-admin-queue .member-order-help { max-width: 680px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); gap: 18px; align-items: start; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-heading h2 { margin: 5px 0 0; font-size: 30px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-crate > p, :root:is(:not([data-skin]), [data-skin="classic"]) .club-drop-recovery > p { color: var(--muted); font-size: 13px; line-height: 1.55; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-add-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; margin: 20px 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-add-form .field { margin: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-list { display: grid; border-top: 1px solid var(--line); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item { min-width: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item:last-child { padding-bottom: 0; border-bottom: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item strong, :root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item small { display: block; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item small { margin-top: 4px; color: var(--muted); font-size: 10px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-icon { width: 40px; height: 40px; display: grid; place-items: center; color: var(--accent-ink); background: var(--orange); border-radius: 50%; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-empty { display: flex; align-items: center; gap: 10px; padding-top: 18px; color: var(--muted); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-empty p { margin: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-drop-recovery-active { border-color: var(--orange); box-shadow: inset 4px 0 0 var(--orange); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-form { display: grid; gap: 18px; margin-top: 20px; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects legend { margin-bottom: 8px; font-size: 12px; font-weight: 850; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects label { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects label:hover { background: var(--surface-hover); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects label.club-recovery-effect-selected { border-color: var(--ink); background: var(--orange-soft); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects input { margin-top: 3px; accent-color: var(--orange); }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects strong, :root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects small { display: block; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-recovery-effects small { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-history { grid-column: 1 / -1; }
+:root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-message { position: sticky; bottom: 18px; grid-column: 1 / -1; z-index: 3; margin: 0; padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(23,23,19,.14); }
 
 :root:is(:not([data-skin]), [data-skin="classic"]) .expandable-description-content { white-space: pre-line; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .expandable-description-content:first-child { margin-top: 0; }
@@ -994,11 +1021,17 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .club-grid { grid-template-columns: repeat(2, 1fr); }
   :root:is(:not([data-skin]), [data-skin="classic"]) .playlist-grid { grid-template-columns: repeat(2, 1fr); }
   :root:is(:not([data-skin]), [data-skin="classic"]) .dashboard-grid, :root:is(:not([data-skin]), [data-skin="classic"]) .club-layout, :root:is(:not([data-skin]), [data-skin="classic"]) .drop-detail-grid { grid-template-columns: 1fr; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-layout { grid-template-columns: 1fr; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-history { grid-column: auto; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .playlist-version-grid { grid-template-columns: 1fr; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .chat-panel { height: 620px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .stats-grid { grid-template-columns: 1fr 1fr; }}
 
 @media (max-width: 800px) {
+  :root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-add-form { grid-template-columns: 1fr; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-add-form .button { width: 100%; }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item { grid-template-columns: 40px minmax(0, 1fr); }
+  :root:is(:not([data-skin]), [data-skin="classic"]) .club-backup-item > :last-child { grid-column: 2; justify-self: start; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .marketing-header { padding: 18px 20px; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .marketing-nav { display: none; }
   :root:is(:not([data-skin]), [data-skin="classic"]) .header-actions .button-ghost { display: none; }

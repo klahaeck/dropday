@@ -7,7 +7,7 @@ import {
   recordDropTriggerRunIds,
 } from "@/lib/drop-attachment";
 import { consumeRateLimit } from "@/lib/rate-limit";
-import { scheduleDropTasks } from "@/lib/scheduler";
+import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
 
 const schema = z.object({
   draftId: z.string().trim().min(1).max(160),
@@ -42,20 +42,44 @@ export async function PUT(
       draftId: parsed.data.draftId,
       actorUserId: profile.id,
     });
-    let warning: string | undefined;
+    let scheduleFailed = false;
+    let deliveryFailed = false;
     try {
-      const runIds = await scheduleDropTasks(
-        result.drop,
-        result.club.schedule.reminderOffsetsMinutes,
-      );
+      const dropToSchedule = result.nextDrop
+        ?? (result.drop.status === "scheduled" ? result.drop : undefined);
+      const runIds = dropToSchedule
+        ? await scheduleDropTasks(
+            dropToSchedule,
+            result.club.schedule.reminderOffsetsMinutes,
+          )
+        : [];
       if (runIds.length) {
-        await recordDropTriggerRunIds(result.drop.id, runIds);
-        result.drop.triggerRunIds = runIds;
+        await recordDropTriggerRunIds(dropToSchedule!.id, runIds);
+        dropToSchedule!.triggerRunIds = runIds;
       }
     } catch {
-      warning = "The playlist is attached, but the drop schedule could not be re-confirmed.";
+      scheduleFailed = true;
     }
-    return NextResponse.json({ drop: result.drop, demo: result.demo, warning });
+    if (result.outbox) {
+      try {
+        await dispatchOutbox(result.outbox.id, result.outbox.idempotencyKey);
+      } catch {
+        deliveryFailed = true;
+      }
+    }
+    const warning = result.drop.status === "published"
+      ? scheduleFailed || deliveryFailed
+        ? "The playlist was published, but some follow-up tasks still need to be retried."
+        : undefined
+      : scheduleFailed
+        ? "The playlist is attached, but the drop schedule could not be re-confirmed."
+        : undefined;
+    return NextResponse.json({
+      drop: result.drop,
+      demo: result.demo,
+      recovered: result.drop.status === "published",
+      warning,
+    });
   } catch (error) {
     if (error instanceof DropAttachmentError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

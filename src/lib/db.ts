@@ -39,6 +39,15 @@ export async function ensureIndexes() {
     db.collection("joinRequests").createIndex({ clubId: 1, status: 1, createdAt: 1 }),
     db.collection("drops").createIndex({ clubId: 1, occurrenceKey: 1 }, { unique: true }),
     db.collection("drops").createIndex({ clubId: 1, status: 1, scheduledFor: -1 }),
+    db.collection("clubBackups").createIndex({ clubId: 1, status: 1, createdAt: -1 }),
+    db.collection("clubBackups").createIndex(
+      { clubId: 1, "playlist.sourceDraftId": 1 },
+      {
+        unique: true,
+        partialFilterExpression: { status: "available" },
+        name: "one_available_backup_per_playlist",
+      },
+    ),
     db.collection("messages").createIndex({ threadType: 1, threadId: 1, createdAt: -1 }),
     db.collection("notifications").createIndex({ userId: 1, createdAt: -1 }),
     db.collection("browserPushSubscriptions").createIndex({ endpoint: 1 }, { unique: true }),

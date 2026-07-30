@@ -147,6 +147,7 @@
 :root[data-skin="eighties"] .mobile-nav a,
 :root[data-skin="eighties"] .mobile-nav button,
 :root[data-skin="eighties"] .mobile-menu-close { border-radius: 2px; }
+:root[data-skin="eighties"] .section-kicker { gap: 14px; }
 :root[data-skin="eighties"] .section-kicker:before {
   width: 7px;
   height: 16px;

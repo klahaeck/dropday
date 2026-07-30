@@ -1,10 +1,9 @@
 import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
-import { nextOccurrences, occurrenceKey } from "@/lib/scheduling";
-import { nextActiveMember, rotateQueue } from "@/lib/queue";
+import { publishDropInTransaction } from "@/lib/drop-publication";
 import { createId } from "@/lib/repository";
 import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
-import type { Club, ClubMembership, DropSlot, OutboxEvent } from "@/types/domain";
+import type { Club, DropSlot, OutboxEvent } from "@/types/domain";
 
 export async function processScheduledDrop(dropId: string, scheduleVersion: number) {
   if (!integrations.mongo) return { status: "demo" } as const;
@@ -32,31 +31,17 @@ export async function processScheduledDrop(dropId: string, scheduleVersion: numb
         result = "overdue";
         return;
       }
-      await db.collection<DropSlot>("drops").updateOne({ id: drop.id, status: "scheduled" }, { $set: { status: "published", publishedAt: now, updatedAt: now } }, { session });
-      const rotationMemberIds = rotateQueue(club.rotationMemberIds, drop.assignedUserId);
-      const memberships = await db.collection<ClubMembership>("memberships")
-        .find({ clubId: club.id, status: "active" }, { session })
-        .toArray();
-      const pausedMemberIds = memberships
-        .filter((membership) => membership.queuePaused)
-        .map((membership) => membership.userId);
-      const nextAssignedUserId = nextActiveMember(rotationMemberIds, pausedMemberIds);
-      const nextDate = nextOccurrences(club.schedule, new Date(), 1)[0];
-      if (nextDate && nextAssignedUserId) {
-        nextDrop = {
-          id: createId("drop"), clubId: club.id, occurrenceKey: occurrenceKey(club.id, nextDate, club.schedule.version),
-          scheduleVersion: club.schedule.version, status: "scheduled", assignedUserId: nextAssignedUserId, scheduledFor: nextDate.toISOString(),
-          createdAt: now, updatedAt: now,
-        };
-        await db.collection<DropSlot>("drops").insertOne(nextDrop, { session });
-      }
-      await db.collection<Club>("clubs").updateOne({ id: club.id }, { $set: { rotationMemberIds, activeDropId: nextDrop?.id, updatedAt: now } }, { session });
-      outbox = {
-        id: createId("outbox"), type: "drop.published", aggregateId: drop.id,
-        payload: { clubId: club.id, title: drop.playlist.title }, status: "pending", attempts: 0,
-        idempotencyKey: `drop-published:${drop.occurrenceKey}`, createdAt: now,
-      };
-      await db.collection<OutboxEvent>("outbox").insertOne(outbox, { session });
+      const publication = await publishDropInTransaction({
+        db,
+        session,
+        club,
+        drop,
+        playlist: drop.playlist,
+        expectedStatus: "scheduled",
+        timestamp: now,
+      });
+      nextDrop = publication.nextDrop;
+      outbox = publication.outbox;
       result = "published";
     });
   });

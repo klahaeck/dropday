@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import type {
   ChatMessage,
   Club,
+  ClubBackup,
   ClubMembership,
   DropSlot,
   JoinRequest,
@@ -212,6 +213,8 @@ export const demoJoinRequests: JoinRequest[] = [
     updatedAt: iso({ hours: -6 }),
   },
 ];
+
+export const demoBackups: ClubBackup[] = [];
 
 export const demoDrops: DropSlot[] = [
   {

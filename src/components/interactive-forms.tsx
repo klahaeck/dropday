@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent } from "react";
+import { FormEvent, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { Bold, Check, ImagePlus, Italic, List, LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import { Check, ImagePlus, LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import type { ArtworkKind } from "@/lib/blob-artwork";
 import { DEFAULT_CLUB_ACCENT, normalizeClubAccent } from "@/lib/club-accent";
 import { CLUB_DESCRIPTION_HTML_MAX_LENGTH, CLUB_DESCRIPTION_MAX_LENGTH, sanitizeClubDescriptionHtml } from "@/lib/club-description";
@@ -320,24 +321,6 @@ export function DraftComposer({ ownerId, playlist }: { ownerId: string; playlist
     if (artworkPreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(artworkPreviewUrl);
   }, [artworkPreviewUrl]);
 
-  function updateDescription() {
-    const editor = editorRef.current;
-    if (!editor) return;
-    setDescriptionHtml(editor.innerHTML);
-    setDescriptionText(editor.innerText);
-  }
-
-  function formatDescription(command: "bold" | "italic" | "insertUnorderedList") {
-    editorRef.current?.focus();
-    document.execCommand(command, false);
-    updateDescription();
-  }
-
-  function pasteDescription(event: ClipboardEvent<HTMLDivElement>) {
-    event.preventDefault();
-    document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
-  }
-
   async function selectArtwork(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -427,14 +410,19 @@ export function DraftComposer({ ownerId, playlist }: { ownerId: string; playlist
       <div className="field field-full"><label htmlFor="draft-title">Drop title</label><input id="draft-title" name="title" type="text" required minLength={2} maxLength={100} placeholder="Sunburn after dark" value={title} onChange={(event) => setTitle(event.target.value)} /></div>
       <div className="field field-full">
         <label id="draft-description-label">Description</label>
-        <div className="rich-text-shell">
-          <div className="rich-text-toolbar" role="toolbar" aria-label="Description formatting">
-            <button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("bold")}><Bold size={16} /></button>
-            <button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("italic")}><Italic size={16} /></button>
-            <button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("insertUnorderedList")}><List size={16} /></button>
-          </div>
-          <div ref={editorRef} id="draft-description" className="rich-text-editor" contentEditable role="textbox" aria-labelledby="draft-description-label" aria-multiline="true" aria-required="true" data-placeholder="Tell the club what they are about to hear." onInput={updateDescription} onPaste={pasteDescription} suppressContentEditableWarning dangerouslySetInnerHTML={{ __html: initialDescriptionHtml }} />
-        </div>
+        <RichTextEditor
+          ref={editorRef}
+          id="draft-description"
+          labelledBy="draft-description-label"
+          toolbarLabel="Description formatting"
+          placeholder="Tell the club what they are about to hear."
+          initialHtml={initialDescriptionHtml}
+          required
+          onValueChange={(html, text) => {
+            setDescriptionHtml(html);
+            setDescriptionText(text);
+          }}
+        />
         <input type="hidden" name="descriptionHtml" value={descriptionHtml} />
         <span className={`field-counter${descriptionText.length > PLAYLIST_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{descriptionText.length.toLocaleString()}/{PLAYLIST_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span>
       </div>
@@ -475,24 +463,6 @@ export function CreateClubForm({ canOwn, ownerId }: { canOwn: boolean; ownerId: 
 
   function imageBusy(busy: boolean) {
     setPreparingImages((count) => Math.max(0, count + (busy ? 1 : -1)));
-  }
-
-  function updateClubDescription() {
-    const editor = clubDescriptionEditorRef.current;
-    if (!editor) return;
-    setClubDescriptionHtml(editor.innerHTML);
-    setClubDescriptionText(editor.innerText);
-  }
-
-  function formatClubDescription(command: "bold" | "italic" | "insertUnorderedList") {
-    clubDescriptionEditorRef.current?.focus();
-    document.execCommand(command, false);
-    updateClubDescription();
-  }
-
-  function pasteClubDescription(event: ClipboardEvent<HTMLDivElement>) {
-    event.preventDefault();
-    document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -558,7 +528,7 @@ export function CreateClubForm({ canOwn, ownerId }: { canOwn: boolean; ownerId: 
 
   if (!canOwn) return <div className="empty-state"><h2>A paid plan is required to own a club.</h2><p>Free members can join three clubs but may never own one. Choose any paid tier to start hosting.</p><a href="/pricing" className="button button-dark">See paid plans</a></div>;
   return <form className="form-shell" onSubmit={submit}>
-    <section className="form-section"><span className="section-kicker">01 · Identity</span><h2>Name the room</h2><div className="form-grid"><div className="field"><label htmlFor="name">Club name</label><input id="name" name="name" required minLength={2} maxLength={70} placeholder="Needle Exchange" value={clubName} onChange={(event) => setClubName(event.target.value)} /></div><div className="field"><label htmlFor="visibility">Visibility</label><select id="visibility" name="visibility"><option value="public">Public · discoverable</option><option value="private">Private · link or invite only</option></select></div><div className="field field-full"><label id="description-label">Description</label><div className="rich-text-shell"><div className="rich-text-toolbar" role="toolbar" aria-label="Description formatting"><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatClubDescription("bold")}><Bold size={16} /></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => formatClubDescription("italic")}><Italic size={16} /></button><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatClubDescription("insertUnorderedList")}><List size={16} /></button></div><div ref={clubDescriptionEditorRef} id="description" className="rich-text-editor rich-text-editor-compact" contentEditable role="textbox" aria-labelledby="description-label" aria-multiline="true" aria-required="true" data-placeholder="What kind of listening club is this?" onInput={updateClubDescription} onPaste={pasteClubDescription} suppressContentEditableWarning /></div><input type="hidden" name="description" value={clubDescriptionText} /><input type="hidden" name="descriptionHtml" value={clubDescriptionHtml} /><span className={`field-counter${clubDescriptionText.length > CLUB_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{clubDescriptionText.length.toLocaleString()}/{CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><div className="field field-full"><label htmlFor="accent">Primary color</label><div className="color-field"><input id="accent" name="accent" type="color" value={clubAccent} onChange={(event) => setClubAccent(event.target.value)} /><span>{clubAccent.toUpperCase()}</span></div><small>Used as the background color on the club detail page.</small></div><ArtworkPicker id="club-image" label="Club image" initials={clubName.trim().slice(0, 1).toUpperCase() || "D"} onChange={setClubArtwork} onBusyChange={imageBusy} /></div></section>
+    <section className="form-section"><span className="section-kicker">01 · Identity</span><h2>Name the room</h2><div className="form-grid"><div className="field"><label htmlFor="name">Club name</label><input id="name" name="name" required minLength={2} maxLength={70} placeholder="Needle Exchange" value={clubName} onChange={(event) => setClubName(event.target.value)} /></div><div className="field"><label htmlFor="visibility">Visibility</label><select id="visibility" name="visibility"><option value="public">Public · discoverable</option><option value="private">Private · link or invite only</option></select></div><div className="field field-full"><label id="description-label">Description</label><RichTextEditor ref={clubDescriptionEditorRef} id="description" labelledBy="description-label" toolbarLabel="Description formatting" placeholder="What kind of listening club is this?" compact required onValueChange={(html, text) => { setClubDescriptionHtml(html); setClubDescriptionText(text); }} /><input type="hidden" name="description" value={clubDescriptionText} /><input type="hidden" name="descriptionHtml" value={clubDescriptionHtml} /><span className={`field-counter${clubDescriptionText.length > CLUB_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{clubDescriptionText.length.toLocaleString()}/{CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><div className="field field-full"><label htmlFor="accent">Primary color</label><div className="color-field"><input id="accent" name="accent" type="color" value={clubAccent} onChange={(event) => setClubAccent(event.target.value)} /><span>{clubAccent.toUpperCase()}</span></div><small>Used as the background color on the club detail page.</small></div><ArtworkPicker id="club-image" label="Club image" initials={clubName.trim().slice(0, 1).toUpperCase() || "D"} onChange={setClubArtwork} onBusyChange={imageBusy} /></div></section>
     <RitualFields idPrefix="new-club-ritual" />
     <section className="form-section"><span className="section-kicker">03 · Listening format</span><h2>Theme or freeform</h2><label className="theme-current-toggle"><input type="checkbox" checked={useTheme} onChange={(event) => setUseTheme(event.target.checked)} /><span><strong>Start this club with a theme</strong><small>Leave this unchecked for a freeform club. You can add themes later.</small></span></label>{useTheme && <div className="form-grid theme-fields-grid optional-theme-fields"><div className="field"><label htmlFor="theme">Theme</label><input id="theme" name="theme" required minLength={2} maxLength={100} placeholder="Heatwave at midnight" value={themeName} onChange={(event) => setThemeName(event.target.value)} /></div><div className="field"><label htmlFor="guidance">Guidance</label><textarea id="guidance" name="guidance" maxLength={THEME_DESCRIPTION_MAX_LENGTH} placeholder="Songs that feel like…" /></div><ArtworkPicker id="theme-image" label="Theme image" initials={themeName.trim().slice(0, 2).toUpperCase() || "TH"} onChange={setThemeArtwork} onBusyChange={imageBusy} /></div>}</section>
     {message && <p className="form-note form-error" role="alert">{message}</p>}<div className="form-actions"><span className="form-note">{uploadStatus ?? "The creator becomes the first queue member."}</span><button className="button button-dark" disabled={loading || preparingImages > 0}><SubmitState loading={loading} success={false} idle="Create club" /></button></div>
@@ -621,24 +591,6 @@ function ClubThemeEditor({
   const themeDescriptionEditorRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  function updateThemeDescription() {
-    const editor = themeDescriptionEditorRef.current;
-    if (!editor) return;
-    setThemeDescriptionHtml(editor.innerHTML);
-    setThemeDescriptionText(editor.innerText);
-  }
-
-  function formatThemeDescription(command: "bold" | "italic" | "insertUnorderedList") {
-    themeDescriptionEditorRef.current?.focus();
-    document.execCommand(command, false);
-    updateThemeDescription();
-  }
-
-  function pasteThemeDescription(event: ClipboardEvent<HTMLDivElement>) {
-    event.preventDefault();
-    document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
-  }
-
   async function submit(event: FormEvent) {
     event.preventDefault();
     const normalizedThemeDescription = themeDescriptionText.trim();
@@ -695,7 +647,7 @@ function ClubThemeEditor({
   }
 
   return <form className="form-shell" onSubmit={submit}>
-    <section className="form-section"><span className="section-kicker">Theme #{version}</span><h2>{theme ? "Update this prompt" : "Give the club a new prompt"}</h2><div className="form-grid theme-fields-grid"><div className="field field-full"><label htmlFor="theme-editor-name">Theme</label><input id="theme-editor-name" required minLength={2} maxLength={100} placeholder="Heatwave at midnight" value={themeName} onChange={(event) => setThemeName(event.target.value)} /></div><div className="field field-full"><label id="theme-editor-description-label">Theme description</label><div className="rich-text-shell"><div className="rich-text-toolbar" role="toolbar" aria-label="Theme description formatting"><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatThemeDescription("bold")}><Bold size={16} /></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => formatThemeDescription("italic")}><Italic size={16} /></button><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatThemeDescription("insertUnorderedList")}><List size={16} /></button></div><div ref={themeDescriptionEditorRef} id="theme-editor-description" className="rich-text-editor rich-text-editor-compact" contentEditable role="textbox" aria-labelledby="theme-editor-description-label" aria-multiline="true" data-placeholder="Songs that feel like…" onInput={updateThemeDescription} onPaste={pasteThemeDescription} suppressContentEditableWarning dangerouslySetInnerHTML={{ __html: initialThemeDescriptionHtml }} /></div><span className={`field-counter${themeDescriptionText.length > THEME_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{themeDescriptionText.length.toLocaleString()}/{THEME_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><ArtworkPicker id="theme-editor-image" label="Theme image" initials={themeName.trim().slice(0, 2).toUpperCase() || "TH"} existingUrl={theme?.imageUrl} onChange={setThemeArtwork} onBusyChange={(busy) => setPreparingImage((count) => Math.max(0, count + (busy ? 1 : -1)))} /></div></section>
+    <section className="form-section"><span className="section-kicker">Theme #{version}</span><h2>{theme ? "Update this prompt" : "Give the club a new prompt"}</h2><div className="form-grid theme-fields-grid"><div className="field field-full"><label htmlFor="theme-editor-name">Theme</label><input id="theme-editor-name" required minLength={2} maxLength={100} placeholder="Heatwave at midnight" value={themeName} onChange={(event) => setThemeName(event.target.value)} /></div><div className="field field-full"><label id="theme-editor-description-label">Theme description</label><RichTextEditor ref={themeDescriptionEditorRef} id="theme-editor-description" labelledBy="theme-editor-description-label" toolbarLabel="Theme description formatting" placeholder="Songs that feel like…" initialHtml={initialThemeDescriptionHtml} compact onValueChange={(html, text) => { setThemeDescriptionHtml(html); setThemeDescriptionText(text); }} /><span className={`field-counter${themeDescriptionText.length > THEME_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{themeDescriptionText.length.toLocaleString()}/{THEME_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><ArtworkPicker id="theme-editor-image" label="Theme image" initials={themeName.trim().slice(0, 2).toUpperCase() || "TH"} existingUrl={theme?.imageUrl} onChange={setThemeArtwork} onBusyChange={(busy) => setPreparingImage((count) => Math.max(0, count + (busy ? 1 : -1)))} /></div></section>
     {!theme && <label className="theme-current-toggle"><input type="checkbox" checked={setCurrent} onChange={(event) => setSetCurrent(event.target.checked)} /><span><strong>Make this the current theme now</strong><small>Leave this unchecked to save the theme for later.</small></span></label>}
     {message && <p className="form-note form-error" role="alert">{message}</p>}
     <div className="form-actions"><span className="form-note">{uploadStatus}</span><Link href={cancelHref} className="button button-ghost">Cancel</Link><button className="button button-dark" disabled={loading || preparingImage > 0}><SubmitState loading={loading} success={false} idle={theme ? "Save changes" : setCurrent ? "Create and make current" : "Save theme"} /></button></div>
@@ -777,24 +729,6 @@ export function ClubSettingsForm({
     setReminderSelections((current) => current.filter((selection) => selection.id !== id));
   }
 
-  function updateDescription() {
-    const editor = descriptionEditorRef.current;
-    if (!editor) return;
-    setDescriptionHtml(editor.innerHTML);
-    setDescriptionText(editor.innerText);
-  }
-
-  function formatDescription(command: "bold" | "italic" | "insertUnorderedList") {
-    descriptionEditorRef.current?.focus();
-    document.execCommand(command, false);
-    updateDescription();
-  }
-
-  function pasteDescription(event: ClipboardEvent<HTMLDivElement>) {
-    event.preventDefault();
-    document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
-  }
-
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedDescription = descriptionText.trim();
@@ -869,7 +803,7 @@ export function ClubSettingsForm({
   }
 
   return <form className="form-shell" onSubmit={submit}>
-    <section className="form-section"><span className="section-kicker">Club identity</span><h2>Club details</h2><div className="form-grid"><div className="field field-full"><label htmlFor="settings-club-name">Club title</label><input id="settings-club-name" required minLength={2} maxLength={70} value={name} onChange={(event) => setName(event.target.value)} /></div><div className="field field-full"><label id="settings-club-description-label">Description</label><div className="rich-text-shell"><div className="rich-text-toolbar" role="toolbar" aria-label="Description formatting"><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("bold")}><Bold size={16} /></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("italic")}><Italic size={16} /></button><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatDescription("insertUnorderedList")}><List size={16} /></button></div><div ref={descriptionEditorRef} id="settings-club-description" className="rich-text-editor rich-text-editor-compact" contentEditable role="textbox" aria-labelledby="settings-club-description-label" aria-multiline="true" aria-required="true" data-placeholder="What kind of listening club is this?" onInput={updateDescription} onPaste={pasteDescription} suppressContentEditableWarning dangerouslySetInnerHTML={{ __html: initialDescriptionHtml }} /></div><span className={`field-counter${descriptionText.length > CLUB_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{descriptionText.length.toLocaleString()}/{CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><div className="field field-full"><label htmlFor="settings-club-accent">Primary color</label><div className="color-field"><input id="settings-club-accent" type="color" value={accent} onChange={(event) => setAccent(event.target.value)} /><span>{accent.toUpperCase()}</span></div><small>Used as the background color on the club detail page.</small></div><ArtworkPicker id="settings-club-image" label="Club image" initials={name.trim().slice(0, 1).toUpperCase() || "D"} existingUrl={clubImageUrl} onChange={setClubArtwork} onBusyChange={imageBusy} /></div></section>
+    <section className="form-section"><span className="section-kicker">Club identity</span><h2>Club details</h2><div className="form-grid"><div className="field field-full"><label htmlFor="settings-club-name">Club title</label><input id="settings-club-name" required minLength={2} maxLength={70} value={name} onChange={(event) => setName(event.target.value)} /></div><div className="field field-full"><label id="settings-club-description-label">Description</label><RichTextEditor ref={descriptionEditorRef} id="settings-club-description" labelledBy="settings-club-description-label" toolbarLabel="Description formatting" placeholder="What kind of listening club is this?" initialHtml={initialDescriptionHtml} compact required onValueChange={(html, text) => { setDescriptionHtml(html); setDescriptionText(text); }} /><span className={`field-counter${descriptionText.length > CLUB_DESCRIPTION_MAX_LENGTH ? " field-counter-over" : ""}`}>{descriptionText.length.toLocaleString()}/{CLUB_DESCRIPTION_MAX_LENGTH.toLocaleString()}</span></div><div className="field field-full"><label htmlFor="settings-club-accent">Primary color</label><div className="color-field"><input id="settings-club-accent" type="color" value={accent} onChange={(event) => setAccent(event.target.value)} /><span>{accent.toUpperCase()}</span></div><small>Used as the background color on the club detail page.</small></div><ArtworkPicker id="settings-club-image" label="Club image" initials={name.trim().slice(0, 1).toUpperCase() || "D"} existingUrl={clubImageUrl} onChange={setClubArtwork} onBusyChange={imageBusy} /></div></section>
     <RitualFields idPrefix="club-settings-ritual" schedule={schedule} kicker="Schedule" />
     <section className="form-section">
       <span className="section-kicker">Notifications</span>

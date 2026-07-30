@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ListOrdered, Palette, Settings } from "lucide-react";
+import { ListOrdered, PackageOpen, Palette, Settings } from "lucide-react";
 
 export function ClubAdminTabs({
   clubSlug,
@@ -7,7 +7,7 @@ export function ClubAdminTabs({
   memberCount,
 }: {
   clubSlug: string;
-  active: "settings" | "themes" | "queue";
+  active: "settings" | "themes" | "backups" | "queue";
   memberCount: number;
 }) {
   const settingsHref = `/app/clubs/${clubSlug}/settings`;
@@ -29,6 +29,14 @@ export function ClubAdminTabs({
       >
         <Palette size={16} aria-hidden="true" />
         Themes
+      </Link>
+      <Link
+        className={`club-admin-tab${active === "backups" ? " club-admin-tab-active" : ""}`}
+        href={`${settingsHref}/backups`}
+        aria-current={active === "backups" ? "page" : undefined}
+      >
+        <PackageOpen size={16} aria-hidden="true" />
+        Backups
       </Link>
       <Link
         className={`club-admin-tab${active === "queue" ? " club-admin-tab-active" : ""}`}

@@ -4,6 +4,7 @@ import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import {
   demoClubs,
+  demoBackups,
   demoDrafts,
   demoDrops,
   demoJoinRequests,
@@ -16,6 +17,7 @@ import {
 import type {
   ChatMessage,
   Club,
+  ClubBackup,
   ClubMembership,
   DropSlot,
   JoinRequest,
@@ -100,6 +102,18 @@ export async function createOrGetPendingJoinRequest(
 export async function getClubDrops(clubId: string): Promise<DropSlot[]> {
   if (!integrations.mongo) return demoDrops.filter((drop) => drop.clubId === clubId).sort((a, b) => b.scheduledFor.localeCompare(a.scheduledFor));
   return (await getDb()).collection<DropSlot>("drops").find({ clubId }).sort({ scheduledFor: -1 }).toArray();
+}
+
+export async function listClubBackups(clubId: string): Promise<ClubBackup[]> {
+  if (!integrations.mongo) {
+    return demoBackups
+      .filter((backup) => backup.clubId === clubId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  return (await getDb()).collection<ClubBackup>("clubBackups")
+    .find({ clubId })
+    .sort({ createdAt: -1 })
+    .toArray();
 }
 
 export async function getDropById(dropId: string): Promise<DropSlot | null> {

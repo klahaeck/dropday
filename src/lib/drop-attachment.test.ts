@@ -94,7 +94,6 @@ function plan(overrides: {
   draft?: PlaylistDraft;
   membership?: ClubMembership | null;
   actorUserId?: string;
-  timestamp?: string;
 } = {}) {
   return planDropAttachment({
     club: overrides.club ?? club,
@@ -102,7 +101,6 @@ function plan(overrides: {
     draft: overrides.draft ?? draft,
     membership: overrides.membership === undefined ? membership : overrides.membership,
     actorUserId: overrides.actorUserId ?? "user-1",
-    timestamp: overrides.timestamp ?? timestamp,
   });
 }
 
@@ -137,15 +135,23 @@ describe("drop attachment", () => {
     expect(() => plan({ draft: { ...draft, ownerId: "user-2" } })).toThrowError(/not found/i);
   });
 
-  it("rejects inactive, stale, paused, and elapsed slots", () => {
+  it("allows the assigned member to fill an overdue slot with their own playlist", () => {
+    expect(plan({
+      drop: { ...drop, status: "overdue" },
+    })).toMatchObject({
+      sourceDraftId: draft.id,
+      title: draft.title,
+      theme: club.currentTheme,
+    });
+  });
+
+  it("rejects inactive, stale, and paused slots", () => {
     expect(() => plan({ drop: { ...drop, status: "published" } }))
       .toThrowError(/can no longer be changed/i);
     expect(() => plan({ club: { ...club, activeDropId: "drop-2" } }))
       .toThrowError(/no longer the club's active drop/i);
     expect(() => plan({ club: { ...club, schedule: { ...club.schedule, paused: true } } }))
       .toThrowError(/schedule is paused/i);
-    expect(() => plan({ timestamp: drop.scheduledFor }))
-      .toThrowError(/already passed/i);
   });
 
   it("rejects a slot created from an older schedule version", () => {
