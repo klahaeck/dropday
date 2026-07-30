@@ -1,10 +1,20 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Fragment } from "react";
-import { CalendarClock, MessageCircleMore, Palette, Repeat2, ShieldCheck, Sparkles } from "lucide-react";
+import { CalendarClock, MessageCircleMore, Palette, Repeat2, Sparkles } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Brand } from "@/components/brand";
+import { MarketingFooter } from "@/components/marketing-footer";
 import { getViewer } from "@/lib/auth";
 import { demoUsers } from "@/lib/demo-data";
+import { publicPageMetadata, SITE_DESCRIPTION } from "@/lib/metadata";
+
+export const metadata: Metadata = publicPageMetadata({
+  title: "Dropday — playlists worth waiting for",
+  description: SITE_DESCRIPTION,
+  path: "/",
+  absoluteTitle: true,
+});
 
 const marqueeItems = ["Spotify", "Apple Music", "One playlist at a time", "Real people, real rotation"];
 
@@ -127,11 +137,7 @@ export default async function MarketingHome() {
         <Link href={primaryHref} className="button button-cream">{viewer ? "Go to dashboard" : "Get in the rotation"}</Link>
       </section>
 
-      <footer className="marketing-footer">
-        <Brand />
-        <div className="footer-links"><Link href="/pricing">Pricing</Link><Link href="/app/discover">Discover</Link><a href="mailto:hello@dropday.app">Contact</a></div>
-        <span><ShieldCheck size={14} /> Built for music, not data mining.</span>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }

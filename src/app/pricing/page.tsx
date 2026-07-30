@@ -3,10 +3,16 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { ClerkPricing } from "@/components/clerk-ui";
+import { MarketingFooter } from "@/components/marketing-footer";
 import { getViewer } from "@/lib/auth";
 import { integrations } from "@/lib/env";
+import { publicPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = publicPageMetadata({
+  title: "Pricing",
+  description: "Compare Dropday plans for joining and hosting playlist clubs.",
+  path: "/pricing",
+});
 
 const plans = [
   { name: "Listener", accent: "var(--white)", price: "$0", club: "Join up to 3 clubs", features: ["Prepare unlimited playlists", "Club and drop chat", "In-app and email reminders"] },
@@ -38,6 +44,7 @@ export default async function PricingPage() {
           </div>
         )}
       </section>
+      <MarketingFooter />
     </main>
   );
 }

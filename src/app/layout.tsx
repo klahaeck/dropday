@@ -7,6 +7,10 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { DEFAULT_SKIN, SKIN_IDS, SKIN_STORAGE_KEY } from "@/lib/skin";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { env, integrations } from "@/lib/env";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+} from "@/lib/metadata";
 import "./globals.css";
 // Alternate designs share the complete opt-in component foundation in
 // skin-brutal.css, then each skin layers its own scoped visual language.
@@ -25,8 +29,20 @@ const monoFont = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variab
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.appUrl),
-  title: { default: "Dropday — playlists worth waiting for", template: "%s · Dropday" },
-  description: "Create a playlist club, take turns dropping music, and make listening social again.",
+  applicationName: SITE_NAME,
+  title: { default: "Dropday — playlists worth waiting for", template: `%s · ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "playlist club",
+    "music club",
+    "playlist sharing",
+    "Spotify playlists",
+    "Apple Music playlists",
+    "listening club",
+  ],
+  category: "music",
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "16x16 32x32 48x48 64x64" },
@@ -35,9 +51,28 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   openGraph: {
-    title: "Dropday",
+    title: "Dropday — playlists worth waiting for",
     description: "A playlist club with a proper rotation.",
+    url: "/",
+    siteName: SITE_NAME,
+    locale: "en_US",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Dropday — playlists worth waiting for",
+    description: "A playlist club with a proper rotation.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 

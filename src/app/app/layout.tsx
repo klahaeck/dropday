@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { AppNav } from "@/components/app-nav";
@@ -9,7 +10,10 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { requireViewer } from "@/lib/auth";
 import { env, integrations } from "@/lib/env";
 import { countUnreadNotifications } from "@/lib/repository";
+import { privateRouteMetadata } from "@/lib/metadata";
 import { SIDEBAR_COOKIE_NAME } from "@/lib/sidebar";
+
+export const metadata: Metadata = privateRouteMetadata;
 
 export default async function ApplicationLayout({ children }: { children: ReactNode }) {
   const viewer = await requireViewer();
