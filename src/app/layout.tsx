@@ -4,7 +4,12 @@ import { Bricolage_Grotesque, Space_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/clerk-ui";
 import { SkinProvider } from "@/components/skin-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import { DEFAULT_SKIN, SKIN_IDS, SKIN_STORAGE_KEY } from "@/lib/skin";
+import {
+  CLASSIC_ONLY_SKIN_ROUTES,
+  DEFAULT_SKIN,
+  SKIN_IDS,
+  SKIN_STORAGE_KEY,
+} from "@/lib/skin";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import { env, integrations } from "@/lib/env";
 import {
@@ -95,7 +100,14 @@ const appearanceBootScript = `
       }
       var skin = localStorage.getItem(${JSON.stringify(SKIN_STORAGE_KEY)});
       var known = ${JSON.stringify(SKIN_IDS)};
-      root.setAttribute("data-skin", known.indexOf(skin) === -1 ? ${JSON.stringify(DEFAULT_SKIN)} : skin);
+      var classicOnlyRoutes = ${JSON.stringify(CLASSIC_ONLY_SKIN_ROUTES)};
+      var classicOnly = classicOnlyRoutes.some(function (route) {
+        return window.location.pathname === route || window.location.pathname.indexOf(route + "/") === 0;
+      });
+      root.setAttribute(
+        "data-skin",
+        classicOnly || known.indexOf(skin) === -1 ? ${JSON.stringify(DEFAULT_SKIN)} : skin
+      );
     } catch (_) {}
   })();
 `;

@@ -2,7 +2,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import { Circle, Flower2, Guitar, MicVocal, Radio, Square } from "lucide-react";
-import { DEFAULT_SKIN, isSkinPreference, SKIN_STORAGE_KEY, SKINS, skinDefinition } from "@/lib/skin";
+import { usePathname } from "next/navigation";
+import {
+  DEFAULT_SKIN,
+  isClassicOnlySkinPath,
+  isSkinPreference,
+  SKIN_STORAGE_KEY,
+  SKINS,
+  skinDefinition,
+} from "@/lib/skin";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { SkinPreference } from "@/types/domain";
@@ -34,11 +42,13 @@ function getSkinPreferenceSnapshot(): SkinPreference {
 }
 
 export function SkinProvider({ children }: { children: ReactNode }) {
-  const skin = useSyncExternalStore<SkinPreference>(
+  const pathname = usePathname();
+  const savedSkin = useSyncExternalStore<SkinPreference>(
     subscribeToSkinPreference,
     getSkinPreferenceSnapshot,
     () => DEFAULT_SKIN,
   );
+  const skin = isClassicOnlySkinPath(pathname) ? DEFAULT_SKIN : savedSkin;
 
   useEffect(() => {
     document.documentElement.dataset.skin = skin;

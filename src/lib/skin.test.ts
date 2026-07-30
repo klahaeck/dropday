@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SKIN, isSkinPreference, resolveSkinPreference, SKIN_IDS, SKINS, skinDefinition } from "@/lib/skin";
+import {
+  CLASSIC_ONLY_SKIN_ROUTES,
+  DEFAULT_SKIN,
+  isClassicOnlySkinPath,
+  isSkinPreference,
+  resolveSkinPreference,
+  SKIN_IDS,
+  SKINS,
+  skinDefinition,
+} from "@/lib/skin";
 
 describe("skin preferences", () => {
   it("accepts only supported skins", () => {
@@ -34,6 +43,16 @@ describe("skin preferences", () => {
     expect(resolveSkinPreference("metal")).toBe("metal");
     expect(resolveSkinPreference("rap")).toBe("rap");
     expect(resolveSkinPreference("classical")).toBe("classic");
+  });
+
+  it("uses the classic design throughout sign-in and sign-up routes", () => {
+    expect(CLASSIC_ONLY_SKIN_ROUTES).toEqual(["/sign-in", "/sign-up"]);
+    expect(isClassicOnlySkinPath("/sign-in")).toBe(true);
+    expect(isClassicOnlySkinPath("/sign-in/factor-one")).toBe(true);
+    expect(isClassicOnlySkinPath("/sign-up")).toBe(true);
+    expect(isClassicOnlySkinPath("/sign-up/verify-email-address")).toBe(true);
+    expect(isClassicOnlySkinPath("/sign-invitation")).toBe(false);
+    expect(isClassicOnlySkinPath("/app")).toBe(false);
   });
 
   it("describes every registered skin", () => {
