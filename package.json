@@ -2,16 +2,8 @@
   "name": "dropday",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "npm@10.8.2",
-  "devEngines": {
-    "packageManager": {
-      "name": "npm",
-      "version": "^10.8.2",
-      "onFail": "error"
-    }
-  },
   "engines": {
-    "node": "24.x"
+    "node": "20.20.2"
   },
   "scripts": {
     "dev": "next dev",
