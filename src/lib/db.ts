@@ -3,19 +3,10 @@ import { env } from "@/lib/env";
 
 declare global {
   var __dropdayMongoClientPromise: Promise<MongoClient> | undefined;
+  var __dropdayIndexesPromise: Promise<void> | undefined;
 }
 
-export async function getDb(): Promise<Db> {
-  if (!env.mongoUri) throw new Error("MONGODB_URI is not configured");
-  if (!global.__dropdayMongoClientPromise) {
-    const client = new MongoClient(env.mongoUri, { appName: "dropday" });
-    global.__dropdayMongoClientPromise = client.connect();
-  }
-  const client = await global.__dropdayMongoClientPromise;
-  return client.db(env.mongoDb);
-}
-
-export async function getMongoClient(): Promise<MongoClient> {
+async function getConnectedMongoClient(): Promise<MongoClient> {
   if (!env.mongoUri) throw new Error("MONGODB_URI is not configured");
   if (!global.__dropdayMongoClientPromise) {
     const client = new MongoClient(env.mongoUri, { appName: "dropday" });
@@ -24,8 +15,7 @@ export async function getMongoClient(): Promise<MongoClient> {
   return global.__dropdayMongoClientPromise;
 }
 
-export async function ensureIndexes() {
-  const db = await getDb();
+async function createIndexes(db: Db): Promise<void> {
   await Promise.all([
     db.collection("users").createIndex({ clerkUserId: 1 }, { unique: true }),
     db.collection("users").createIndex(
@@ -64,4 +54,30 @@ export async function ensureIndexes() {
     db.collection("webhookReceipts").createIndex({ eventId: 1 }, { unique: true }),
     db.collection("rateLimits").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
   ]);
+}
+
+async function ensureIndexesForDb(db: Db): Promise<void> {
+  if (!global.__dropdayIndexesPromise) {
+    global.__dropdayIndexesPromise = createIndexes(db).catch((error) => {
+      global.__dropdayIndexesPromise = undefined;
+      throw error;
+    });
+  }
+  await global.__dropdayIndexesPromise;
+}
+
+export async function getMongoClient(): Promise<MongoClient> {
+  const client = await getConnectedMongoClient();
+  await ensureIndexesForDb(client.db(env.mongoDb));
+  return client;
+}
+
+export async function getDb(): Promise<Db> {
+  const client = await getMongoClient();
+  return client.db(env.mongoDb);
+}
+
+export async function ensureIndexes(): Promise<void> {
+  const client = await getConnectedMongoClient();
+  await ensureIndexesForDb(client.db(env.mongoDb));
 }

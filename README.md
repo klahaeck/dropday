@@ -25,7 +25,7 @@ npm run build
 
 Copy `.env.example` to `.env.local` and configure:
 
-- `MONGODB_URI`: MongoDB Atlas connection string. Call `ensureIndexes()` from `src/lib/db.ts` once during environment provisioning.
+- `MONGODB_URI`: MongoDB Atlas connection string. The shared connection in `src/lib/db.ts` provisions required indexes before its first database access in each app or worker process.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`: Clerk application credentials.
 - `CLERK_WEBHOOK_SIGNING_SECRET`: webhook endpoint secret for `/api/webhooks/clerk`.
 - `ABLY_API_KEY` and `NEXT_PUBLIC_ABLY_ENABLED=true`: authenticated club and drop channels.

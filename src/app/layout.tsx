@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { Bricolage_Grotesque, Space_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/clerk-ui";
 import { SkinProvider } from "@/components/skin-provider";
@@ -132,6 +133,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             </AuthProvider>
           </SkinProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
