@@ -12,7 +12,10 @@ vi.mock("@/lib/db", () => ({
 
 import { applyBillingPlan } from "@/lib/billing-service";
 
-function configureBillingCollections(remainingOwnerId?: string) {
+function configureBillingCollections(
+  remainingOwnerId?: string,
+  { userMatchedCount = 1 }: { userMatchedCount?: number } = {},
+) {
   const ownerMembership = {
     id: "membership-owner",
     clubId: "club-1",
@@ -32,11 +35,14 @@ function configureBillingCollections(remainingOwnerId?: string) {
   const membershipUpdate = vi.fn().mockResolvedValue({ matchedCount: 1 });
   const clubUpdate = vi.fn().mockResolvedValue({ matchedCount: 1 });
   const auditInsert = vi.fn().mockResolvedValue({ insertedId: "audit-1" });
+  const userUpdate = vi.fn().mockResolvedValue({ matchedCount: userMatchedCount });
+  const entitlementLock = vi.fn().mockResolvedValue({ matchedCount: 1 });
+  const membershipFind = vi.fn(() => ({
+    toArray: vi.fn().mockResolvedValue([ownerMembership]),
+  }));
   const collections: Record<string, unknown> = {
     memberships: {
-      find: vi.fn(() => ({
-        toArray: vi.fn().mockResolvedValue([ownerMembership]),
-      })),
+      find: membershipFind,
       findOne: vi.fn().mockResolvedValue(
         remainingOwnerId
           ? {
@@ -60,7 +66,10 @@ function configureBillingCollections(remainingOwnerId?: string) {
       updateOne: clubUpdate,
     },
     users: {
-      updateOne: vi.fn().mockResolvedValue({ matchedCount: 1 }),
+      updateOne: userUpdate,
+    },
+    entitlementLocks: {
+      updateOne: entitlementLock,
     },
     auditEvents: {
       insertOne: auditInsert,
@@ -82,6 +91,9 @@ function configureBillingCollections(remainingOwnerId?: string) {
     membershipUpdate,
     clubUpdate,
     auditInsert,
+    userUpdate,
+    entitlementLock,
+    membershipFind,
   };
 }
 
@@ -160,5 +172,55 @@ describe("billing ownership changes", () => {
       }),
       expect.objectContaining({ session: expect.any(Object) }),
     );
+  });
+
+  it("uses the higher complimentary plan for custody and persists both plan sources", async () => {
+    const { clubUpdate, userUpdate } = configureBillingCollections();
+
+    const result = await applyBillingPlan("user-owner", "free", "highest");
+
+    expect(result).toEqual(expect.objectContaining({
+      billedPlan: "free",
+      complimentaryPlan: "highest",
+      nextPlan: "highest",
+      excessClubIds: [],
+    }));
+    expect(clubUpdate).not.toHaveBeenCalled();
+    expect(userUpdate).toHaveBeenCalledWith(
+      { id: "user-owner" },
+      {
+        $set: expect.objectContaining({
+          billedPlan: "free",
+          plan: "highest",
+        }),
+      },
+      expect.objectContaining({ session: expect.any(Object) }),
+    );
+  });
+
+  it("serializes billing changes before reading ownership state", async () => {
+    const { entitlementLock, userUpdate, membershipFind } = configureBillingCollections();
+
+    await applyBillingPlan("user-owner", "free");
+
+    expect(entitlementLock.mock.invocationCallOrder[0]).toBeLessThan(
+      userUpdate.mock.invocationCallOrder[0]!,
+    );
+    expect(userUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+      membershipFind.mock.invocationCallOrder[0]!,
+    );
+    expect(membershipFind).toHaveBeenCalledWith(
+      { userId: "user-owner", role: "owner", status: "active" },
+      expect.objectContaining({ session: expect.any(Object) }),
+    );
+  });
+
+  it("fails reconciliation when the user profile has not arrived yet", async () => {
+    const { clubUpdate } = configureBillingCollections(undefined, { userMatchedCount: 0 });
+
+    await expect(applyBillingPlan("user-owner", "entry")).rejects.toThrow(
+      "Billing profile is not available yet",
+    );
+    expect(clubUpdate).not.toHaveBeenCalled();
   });
 });

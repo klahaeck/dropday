@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   resolvePlaylist: vi.fn(),
   insertDraft: vi.fn(),
   consumeRateLimit: vi.fn(),
+  reportOperationalError: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ requireViewer: mocks.requireViewer }));
@@ -24,6 +25,7 @@ vi.mock("@/lib/repository", () => ({
   insertDraft: mocks.insertDraft,
 }));
 vi.mock("@/lib/rate-limit", () => ({ consumeRateLimit: mocks.consumeRateLimit }));
+vi.mock("@/lib/observability", () => ({ reportOperationalError: mocks.reportOperationalError }));
 
 import { POST } from "@/app/api/drafts/route";
 
@@ -41,6 +43,14 @@ function request(overrides: Record<string, unknown> = {}) {
       descriptionHtml: "<p>Songs for the long way home.</p>",
       ...overrides,
     }),
+  });
+}
+
+function malformedRequest() {
+  return new Request("http://localhost/api/drafts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{",
   });
 }
 
@@ -74,6 +84,14 @@ describe("playlist draft create route", () => {
     expect(mocks.insertDraft).not.toHaveBeenCalled();
   });
 
+  it("returns a client error for malformed JSON", async () => {
+    const response = await POST(malformedRequest());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "Invalid playlist request." });
+    expect(mocks.consumeRateLimit).not.toHaveBeenCalled();
+  });
+
   it("identifies a URL placed in the wrong provider field", async () => {
     const response = await POST(request({
       spotifyUrl: "https://music.apple.com/us/playlist/example/pl.u-b3b8V4etKZA9p",
@@ -97,5 +115,34 @@ describe("playlist draft create route", () => {
       ownerId: "user-1",
       description: "Songs for the long way home.",
     }));
+  });
+
+  it("returns a retryable server error without exposing persistence details", async () => {
+    mocks.insertDraft.mockRejectedValueOnce(new Error("mongodb://internal-host unavailable"));
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "Could not save this playlist. Try again." });
+    expect(mocks.reportOperationalError).toHaveBeenCalledWith(
+      "playlist-draft.create",
+      expect.any(Error),
+      { userId: "user-1" },
+    );
+  });
+
+  it("classifies rate-limit storage failures as retryable server errors", async () => {
+    mocks.consumeRateLimit.mockRejectedValueOnce(new Error("rate-limit database unavailable"));
+
+    const response = await POST(request({ artworkUrl }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "Could not save this playlist. Try again." });
+    expect(mocks.discardArtwork).toHaveBeenCalledWith(artworkUrl);
+    expect(mocks.reportOperationalError).toHaveBeenCalledWith(
+      "playlist-draft.rate-limit",
+      expect.any(Error),
+      { userId: "user-1", operation: "create" },
+    );
   });
 });

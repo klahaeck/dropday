@@ -16,9 +16,16 @@ import {
 } from "@/lib/drop-reminder-settings";
 import { demoDrops } from "@/lib/demo-data";
 import { integrations } from "@/lib/env";
+import {
+  enqueueDropScheduleOutbox,
+  getDropScheduleDispatchState,
+  requeueOutboxEvent,
+  type DurableOutboxEvent,
+} from "@/lib/outbox";
+import { reportOperationalError } from "@/lib/observability";
 import { createId, getClubBySlug, getClubMemberships, getDropById, getUserProfile } from "@/lib/repository";
 import { occurrenceKey } from "@/lib/scheduling";
-import { scheduleDropTasks } from "@/lib/scheduler";
+import { dispatchOutbox } from "@/lib/scheduler";
 import { isValidTimeZone } from "@/lib/timezones";
 import type { Club, DropSlot } from "@/types/domain";
 
@@ -113,6 +120,61 @@ async function responsePlan(plan: ClubScheduleChangePlan) {
   };
 }
 
+export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const context = await authorizedScheduleContext(slug);
+  if (context.error) return context.error;
+  if (!integrations.mongo) {
+    return NextResponse.json({ status: "delivered", attempts: 0, retryable: false, demo: true });
+  }
+  const state = await getDropScheduleDispatchState(await getDb(), context.activeDrop);
+  return NextResponse.json(state);
+}
+
+export async function PUT(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const context = await authorizedScheduleContext(slug);
+  if (context.error) return context.error;
+  if (!context.activeDrop || context.activeDrop.status !== "scheduled") {
+    return NextResponse.json({ error: "There is no scheduled drop to retry." }, { status: 409 });
+  }
+  if (!integrations.mongo) {
+    return NextResponse.json({ status: "delivered", attempts: 0, retryable: false, demo: true });
+  }
+
+  const db = await getDb();
+  const idempotencyKey = `drop-schedule:${context.activeDrop.occurrenceKey}`;
+  const existingEvent = await db.collection<DurableOutboxEvent>("outbox").findOne({ idempotencyKey });
+  let event: DurableOutboxEvent = existingEvent ?? await enqueueDropScheduleOutbox({
+    db,
+    drop: context.activeDrop,
+    reminderOffsetsMinutes: context.club.schedule.reminderOffsetsMinutes,
+    timestamp: new Date().toISOString(),
+  });
+  if (existingEvent && event.status !== "delivered") {
+    event = await requeueOutboxEvent(db, event.id) ?? event;
+  }
+
+  let warning: string | undefined;
+  if (event.status !== "delivered") {
+    try {
+      await dispatchOutbox(event.id, event.idempotencyKey);
+    } catch (error) {
+      reportOperationalError("club.schedule-manual-retry", error, {
+        clubId: context.club.id,
+        outboxId: event.id,
+      });
+      warning = "The retry is queued and the automatic sweeper will continue processing it.";
+    }
+  }
+  return NextResponse.json({
+    status: event.status,
+    attempts: event.attempts,
+    retryable: event.status !== "delivered",
+    warning,
+  });
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const parsed = requestSchema.safeParse(await request.json());
@@ -204,6 +266,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
 
   let committedPlan: ClubScheduleChangePlan | undefined;
   let dropToSchedule: DropSlot | undefined;
+  let scheduleOutbox: DurableOutboxEvent | undefined;
   try {
     const db = await getDb();
     const client = await getMongoClient();
@@ -292,6 +355,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
         { session },
       );
       if (clubResult.matchedCount !== 1) throw new StaleScheduleReviewError();
+      if (dropToSchedule) {
+        scheduleOutbox = await enqueueDropScheduleOutbox({
+          db,
+          session,
+          drop: dropToSchedule,
+          reminderOffsetsMinutes: plan.schedule.reminderOffsetsMinutes,
+          timestamp,
+        });
+      }
     }));
   } catch (error) {
     if (error instanceof StaleScheduleReviewError) {
@@ -304,17 +376,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
   }
 
   let warning: string | undefined;
-  if (dropToSchedule && committedPlan) {
+  if (scheduleOutbox && committedPlan) {
     try {
-      const runIds = await scheduleDropTasks(dropToSchedule, committedPlan.schedule.reminderOffsetsMinutes);
-      if (runIds.length) {
-        await (await getDb()).collection<DropSlot>("drops").updateOne(
-          { id: dropToSchedule.id, scheduleVersion: dropToSchedule.scheduleVersion },
-          { $set: { triggerRunIds: runIds } },
-        );
-      }
-    } catch {
-      warning = "The schedule was saved, but the next drop tasks still need to be scheduled.";
+      await dispatchOutbox(scheduleOutbox.id, scheduleOutbox.idempotencyKey);
+    } catch (error) {
+      reportOperationalError("club.schedule-dispatch", error, {
+        clubId: context.club.id,
+        outboxId: scheduleOutbox.id,
+      });
+      warning = "The schedule was saved and its drop was queued for automatic scheduling.";
     }
   }
 

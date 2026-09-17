@@ -18,7 +18,7 @@ import {
   resolveMentionedUserIds,
   type ChatMentionMember,
 } from "@/lib/chat-mentions";
-import { reconcileSentMessage } from "@/lib/chat-messages";
+import { mergeChatMessages, reconcileSentMessage } from "@/lib/chat-messages";
 import {
   applyCanonicalChatReaction,
   CHAT_QUICK_REACTIONS,
@@ -36,7 +36,12 @@ import {
 } from "@/lib/chat-presence";
 import type { ChatMessage } from "@/types/domain";
 
-type RealtimeChatMessage = ChatMessage & { clientMessageId?: string };
+interface MessagePagePayload {
+  messages: ChatMessage[];
+  olderCursor?: string;
+  newerCursor?: string;
+  hasMoreNewer: boolean;
+}
 
 function renderMessageBody(body: string, members: ChatMentionMember[]) {
   const tokens = findMentionTokens(body, members);
@@ -57,6 +62,8 @@ export function ChatPanel({
   threadType,
   threadId,
   initialMessages,
+  initialOlderCursor,
+  initialNewerCursor,
   currentUser,
   mentionableUsers,
   realtimeEnabled,
@@ -64,6 +71,8 @@ export function ChatPanel({
   threadType: "club" | "drop";
   threadId: string;
   initialMessages: ChatMessage[];
+  initialOlderCursor?: string;
+  initialNewerCursor?: string;
   currentUser: { id: string; displayName: string; initials: string };
   mentionableUsers: ChatMentionMember[];
   realtimeEnabled: boolean;
@@ -79,13 +88,19 @@ export function ChatPanel({
   const [mentionMenuDismissed, setMentionMenuDismissed] = useState(false);
   const [sendError, setSendError] = useState("");
   const [reactionError, setReactionError] = useState("");
-  const [typing, setTyping] = useState<string | null>(null);
+  const [olderCursor, setOlderCursor] = useState(initialOlderCursor);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [presence, setPresence] = useState<ChatPresenceState>(
     realtimeEnabled ? connectingChatPresence() : unavailableChatPresence(),
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesViewportRef = useRef<HTMLDivElement>(null);
   const pendingReactionRequestsRef = useRef(new Set<string>());
+  const newerCursorRef = useRef(initialNewerCursor);
+  const catchingUpRef = useRef(false);
+  const loadingOlderRef = useRef(false);
+  const retryMessageRef = useRef<{ body: string; clientMessageId: string } | null>(null);
   const messages = chatState.messages;
   const previousMessageCountRef = useRef(messages.length);
   const hasPositionedMessagesRef = useRef(false);
@@ -119,20 +134,42 @@ export function ChatPanel({
         if (!disposed) setPresence(unavailableChatPresence());
       }
     };
+    const catchUpMessages = async () => {
+      if (disposed || catchingUpRef.current) return;
+      catchingUpRef.current = true;
+      try {
+        let cursor = newerCursorRef.current;
+        for (let pageNumber = 0; pageNumber < 10 && !disposed; pageNumber += 1) {
+          const query = new URLSearchParams({ threadType, threadId });
+          if (cursor) query.set("after", cursor);
+          const response = await fetch(`/api/chat?${query.toString()}`);
+          if (!response.ok) return;
+          const page = await response.json() as MessagePagePayload;
+          if (disposed) return;
+          setChatState((current) => ({
+            ...current,
+            messages: mergeChatMessages(current.messages, page.messages),
+          }));
+          cursor = page.newerCursor ?? cursor;
+          newerCursorRef.current = cursor;
+          if (!page.hasMoreNewer || !cursor) return;
+        }
+      } catch {
+        return;
+      } finally {
+        catchingUpRef.current = false;
+      }
+    };
     const handleMessage = (event: InboundMessage) => {
-      const { clientMessageId, ...message } = event.data as RealtimeChatMessage;
+      const message = event.data as ChatMessage;
       setChatState((current) => ({
         ...current,
-        messages: clientMessageId
-          ? reconcileSentMessage(current.messages, clientMessageId, message)
+        messages: message.clientMessageId
+          ? reconcileSentMessage(current.messages, message.clientMessageId, message)
           : current.messages.some((item) => item.id === message.id)
             ? current.messages
             : [...current.messages, message],
       }));
-    };
-    const handleTyping = (event: InboundMessage) => {
-      const data = event.data as { userId: string; name: string; typing: boolean };
-      if (data.userId !== currentUser.id) setTyping(data.typing ? data.name : null);
     };
     const handleReaction = (event: InboundMessage) => {
       const update = event.data as ChatReactionUpdate;
@@ -163,6 +200,7 @@ export function ChatPanel({
       if (change.current === "connected") {
         setPresence(connectingChatPresence());
         void refreshPresence();
+        void catchUpMessages();
       }
     };
     const disposeRealtime = () => {
@@ -174,7 +212,6 @@ export function ChatPanel({
       enteredPresence = false;
       if (!currentRealtime || !currentChannel) return;
       currentChannel.unsubscribe("message", handleMessage);
-      currentChannel.unsubscribe("typing", handleTyping);
       currentChannel.unsubscribe("reaction", handleReaction);
       currentChannel.presence.unsubscribe(["enter", "leave", "update"], handlePresenceChange);
       currentRealtime.connection.off(handleConnectionChange);
@@ -201,7 +238,6 @@ export function ChatPanel({
       ], handleConnectionChange);
       await Promise.all([
         channel.subscribe("message", handleMessage),
-        channel.subscribe("typing", handleTyping),
         channel.subscribe("reaction", handleReaction),
         channel.presence.subscribe(["enter", "leave", "update"], handlePresenceChange),
       ]);
@@ -212,6 +248,7 @@ export function ChatPanel({
       await channel.presence.enter({ name: currentUser.displayName });
       enteredPresence = true;
       await refreshPresence();
+      await catchUpMessages();
     }).catch(() => {
       disposeRealtime();
       if (!disposed) setPresence(unavailableChatPresence());
@@ -226,6 +263,11 @@ export function ChatPanel({
     const viewport = messagesViewportRef.current;
     const messageWasAppended = messageCount > previousMessageCountRef.current;
     previousMessageCountRef.current = messageCount;
+
+    if (loadingOlderRef.current) {
+      loadingOlderRef.current = false;
+      return;
+    }
 
     if (!viewport || (hasPositionedMessagesRef.current && !messageWasAppended)) return;
     viewport.scrollTo({
@@ -250,7 +292,9 @@ export function ChatPanel({
     setCaretPosition(0);
     setSelectedMentionIds([]);
     setMentionMenuDismissed(true);
-    const clientMessageId = crypto.randomUUID();
+    const retry = retryMessageRef.current;
+    const clientMessageId = retry?.body === text ? retry.clientMessageId : crypto.randomUUID();
+    retryMessageRef.current = { body: text, clientMessageId };
     const optimistic: ChatMessage = {
       id: clientMessageId,
       threadType,
@@ -258,6 +302,7 @@ export function ChatPanel({
       authorId: currentUser.id,
       authorName: currentUser.displayName,
       authorInitials: currentUser.initials,
+      clientMessageId,
       body: text,
       mentionedUserIds,
       reactions: [],
@@ -280,6 +325,7 @@ export function ChatPanel({
         ...current,
         messages: reconcileSentMessage(current.messages, optimistic.id, message),
       }));
+      retryMessageRef.current = null;
     } catch {
       setChatState((current) => ({
         ...current,
@@ -293,6 +339,7 @@ export function ChatPanel({
   }
 
   function updateComposer(nextBody: string, nextCaretPosition: number) {
+    if (retryMessageRef.current?.body !== nextBody.trim()) retryMessageRef.current = null;
     setBody(nextBody);
     setCaretPosition(nextCaretPosition);
     setActiveMentionIndex(0);
@@ -372,6 +419,34 @@ export function ChatPanel({
     }
   }
 
+  async function loadOlderMessages() {
+    if (!olderCursor || historyBusy) return;
+    setHistoryBusy(true);
+    setHistoryError("");
+    const viewport = messagesViewportRef.current;
+    const previousHeight = viewport?.scrollHeight ?? 0;
+    loadingOlderRef.current = true;
+    try {
+      const query = new URLSearchParams({ threadType, threadId, before: olderCursor });
+      const response = await fetch(`/api/chat?${query.toString()}`);
+      if (!response.ok) throw new Error("Could not load message history.");
+      const page = await response.json() as MessagePagePayload;
+      setChatState((current) => ({
+        ...current,
+        messages: mergeChatMessages(page.messages, current.messages),
+      }));
+      setOlderCursor(page.olderCursor);
+      requestAnimationFrame(() => {
+        if (viewport) viewport.scrollTop += viewport.scrollHeight - previousHeight;
+      });
+    } catch {
+      loadingOlderRef.current = false;
+      setHistoryError("Could not load earlier messages. Try again.");
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
   return (
     <section className="chat-panel">
       <header className="chat-header">
@@ -379,6 +454,10 @@ export function ChatPanel({
         <span className="presence" aria-live="polite"><Users size={14} /> {chatPresenceLabel(presence)}</span>
       </header>
       <div className="chat-messages" ref={messagesViewportRef} aria-live="polite">
+        {olderCursor && <button className="button button-ghost button-small" type="button" disabled={historyBusy} onClick={() => void loadOlderMessages()}>
+          {historyBusy ? "Loading…" : "Load earlier messages"}
+        </button>}
+        {historyError && <p className="chat-composer-error" role="status">{historyError}</p>}
         {messages.map((message) => {
           const isCurrentUser = message.authorId === currentUser.id;
           const formattedTime = new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(message.createdAt));
@@ -437,7 +516,6 @@ export function ChatPanel({
         {!messages.length && <div className="empty-chat">Start the conversation when the needle drops.</div>}
       </div>
       {reactionError && <p className="chat-composer-error" role="status">{reactionError}</p>}
-      <div className="typing-line">{typing ? `${typing} is typing…` : " "}</div>
       <form className="chat-composer" onSubmit={submit}>
         <label className="sr-only" htmlFor={`${threadId}-message`}>Message</label>
         <input

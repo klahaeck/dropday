@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { getDb, getMongoClient } from "@/lib/db";
-import { PLAN_ENTITLEMENTS } from "@/lib/entitlements";
+import { acquireEntitlementLock } from "@/lib/entitlement-capacity";
+import { highestPlan, PLAN_ENTITLEMENTS } from "@/lib/entitlements";
 import { enterSystemCustody } from "@/lib/custody";
 import type {
   Club,
@@ -9,31 +10,59 @@ import type {
   UserProfile,
 } from "@/types/domain";
 
-export async function applyBillingPlan(userId: string, nextPlan: PlanKey) {
+export async function applyBillingPlan(
+  userId: string,
+  billedPlan: PlanKey,
+  complimentaryPlan: PlanKey | null = null,
+) {
+  const nextPlan = highestPlan(billedPlan, complimentaryPlan);
   const db = await getDb();
   const client = await getMongoClient();
-  const ownerMemberships = await db.collection<ClubMembership>("memberships")
-    .find({ userId, role: "owner", status: "active" })
-    .toArray();
-  const ownedClubs = await db.collection<Club>("clubs")
-    .find({
-      id: { $in: ownerMemberships.map((membership) => membership.clubId) },
-      "custody.status": "active",
-    })
-    .sort({ createdAt: 1 })
-    .toArray();
-  const limit = PLAN_ENTITLEMENTS[nextPlan].ownedClubLimit;
-  const allowed = limit === null ? ownedClubs.length : limit;
-  const excess = ownedClubs.slice(allowed);
   const timestamp = new Date();
+  let excessClubIds: string[] = [];
 
   await client.withSession(async (session) => {
     await session.withTransaction(async () => {
-      await db.collection<UserProfile>("users").updateOne(
+      excessClubIds = [];
+      await acquireEntitlementLock(db, session, userId, timestamp.toISOString());
+      const userUpdate = await db.collection<UserProfile>("users").updateOne(
         { id: userId },
-        { $set: { plan: nextPlan, updatedAt: timestamp.toISOString() } },
+        {
+          $set: {
+            billedPlan,
+            plan: nextPlan,
+            updatedAt: timestamp.toISOString(),
+          },
+        },
         { session },
       );
+      if (userUpdate.matchedCount !== 1) {
+        throw new Error("Billing profile is not available yet");
+      }
+
+      const ownerMemberships = await db.collection<ClubMembership>("memberships")
+        .find(
+          { userId, role: "owner", status: "active" },
+          { session },
+        )
+        .toArray();
+      const ownedClubs = ownerMemberships.length
+        ? await db.collection<Club>("clubs")
+            .find(
+              {
+                id: { $in: ownerMemberships.map((membership) => membership.clubId) },
+                "custody.status": "active",
+              },
+              { session },
+            )
+            .sort({ createdAt: 1 })
+            .toArray()
+        : [];
+      const limit = PLAN_ENTITLEMENTS[nextPlan].ownedClubLimit;
+      const allowed = limit === null ? ownedClubs.length : limit;
+      const excess = ownedClubs.slice(allowed);
+      excessClubIds = excess.map((club) => club.id);
+
       for (const club of excess) {
         const remainingOwner = await db.collection<ClubMembership>("memberships").findOne(
           {
@@ -117,7 +146,13 @@ export async function applyBillingPlan(userId: string, nextPlan: PlanKey) {
       }
     });
   });
-  return { nextPlan, excessClubIds: excess.map((club) => club.id), appliedAt: DateTime.fromJSDate(timestamp).toISO() };
+  return {
+    billedPlan,
+    complimentaryPlan,
+    nextPlan,
+    excessClubIds,
+    appliedAt: DateTime.fromJSDate(timestamp).toISO(),
+  };
 }
 
 export async function archiveExpiredCustodyClubs() {

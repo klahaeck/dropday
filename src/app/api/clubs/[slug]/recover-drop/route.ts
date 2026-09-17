@@ -6,10 +6,10 @@ import {
   recoverOverdueDropWithBackup,
 } from "@/lib/club-backups";
 import { canUseClubManagement } from "@/lib/club-management";
-import { recordDropTriggerRunIds } from "@/lib/drop-attachment";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { reportOperationalError } from "@/lib/observability";
 import { getClubBySlug, getClubMemberships } from "@/lib/repository";
-import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
+import { dispatchOutbox } from "@/lib/scheduler";
 
 const schema = z.object({
   backupId: z.string().trim().min(1).max(160),
@@ -58,28 +58,21 @@ export async function POST(
       queueEffect: parsed.data.queueEffect,
       reviewedAction: parsed.data.reviewedAction,
     });
-    let scheduleFailed = false;
-    let deliveryFailed = false;
-    try {
-      if (result.nextDrop) {
-        const runIds = await scheduleDropTasks(
-          result.nextDrop,
-          result.club.schedule.reminderOffsetsMinutes,
-        );
-        if (runIds.length) {
-          await recordDropTriggerRunIds(result.nextDrop.id, runIds);
-        }
+    let followUpKickFailed = false;
+    for (const event of [result.scheduleOutbox, result.outbox]) {
+      if (!event) continue;
+      try {
+        await dispatchOutbox(event.id, event.idempotencyKey);
+      } catch (error) {
+        reportOperationalError("drop-recovery.follow-up-dispatch", error, {
+          clubId: club.id,
+          outboxId: event.id,
+        });
+        followUpKickFailed = true;
       }
-    } catch {
-      scheduleFailed = true;
     }
-    try {
-      await dispatchOutbox(result.outbox.id, result.outbox.idempotencyKey);
-    } catch {
-      deliveryFailed = true;
-    }
-    const warning = scheduleFailed || deliveryFailed
-      ? "The backup was published, but some follow-up tasks still need to be retried."
+    const warning = followUpKickFailed
+      ? "The backup was published and its follow-up work was queued for automatic retry."
       : undefined;
     return NextResponse.json({
       drop: result.drop,

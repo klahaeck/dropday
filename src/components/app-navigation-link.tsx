@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentProps, ReactNode } from "react";
+import { useNavigationBlocker } from "@/components/navigation-blocker";
 import { isActiveAppPath } from "@/lib/navigation";
 
 function AppNavigationPendingStatus() {
@@ -29,12 +30,21 @@ export function AppNavigationLink({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const { confirmNavigation } = useNavigationBlocker();
   const active = isActiveAppPath(pathname, href);
   const classes = [className, active ? "app-navigation-link-active" : undefined].filter(Boolean).join(" ");
 
   return <Link
     href={href}
     {...props}
+    data-navigation-guarded="true"
+    onNavigate={(event) => {
+      if (!confirmNavigation()) {
+        event.preventDefault();
+        return;
+      }
+      props.onNavigate?.(event);
+    }}
     className={classes || undefined}
     aria-current={active ? "page" : undefined}
   >

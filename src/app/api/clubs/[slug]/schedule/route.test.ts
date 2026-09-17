@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
   createId: vi.fn(() => "drop-new"),
   getDb: vi.fn(),
   getMongoClient: vi.fn(),
-  scheduleDropTasks: vi.fn(),
+  enqueueDropScheduleOutbox: vi.fn(),
+  getDropScheduleDispatchState: vi.fn(),
+  requeueOutboxEvent: vi.fn(),
+  dispatchOutbox: vi.fn(),
   integrations: { mongo: true },
   demoDrops: [] as DropSlot[],
 }));
@@ -26,9 +29,14 @@ vi.mock("@/lib/repository", () => ({
 vi.mock("@/lib/db", () => ({ getDb: mocks.getDb, getMongoClient: mocks.getMongoClient }));
 vi.mock("@/lib/env", () => ({ integrations: mocks.integrations }));
 vi.mock("@/lib/demo-data", () => ({ demoDrops: mocks.demoDrops }));
-vi.mock("@/lib/scheduler", () => ({ scheduleDropTasks: mocks.scheduleDropTasks }));
+vi.mock("@/lib/outbox", () => ({
+  enqueueDropScheduleOutbox: mocks.enqueueDropScheduleOutbox,
+  getDropScheduleDispatchState: mocks.getDropScheduleDispatchState,
+  requeueOutboxEvent: mocks.requeueOutboxEvent,
+}));
+vi.mock("@/lib/scheduler", () => ({ dispatchOutbox: mocks.dispatchOutbox }));
 
-import { PATCH, POST } from "@/app/api/clubs/[slug]/schedule/route";
+import { GET, PATCH, POST, PUT } from "@/app/api/clubs/[slug]/schedule/route";
 
 const timestamp = "2026-09-17T12:00:00.000Z";
 const baseClub: Club = {
@@ -122,6 +130,7 @@ describe("club schedule preview and commit route", () => {
   let drop: DropSlot;
   const clubUpdate = vi.fn();
   const dropUpdate = vi.fn();
+  const outboxFind = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -137,7 +146,16 @@ describe("club schedule preview and commit route", () => {
     mocks.getClubMemberships.mockResolvedValue([membership]);
     mocks.getDropById.mockImplementation(async () => drop);
     mocks.getUserProfile.mockResolvedValue({ displayName: "Alex Listener" });
-    mocks.scheduleDropTasks.mockResolvedValue(["run-new"]);
+    mocks.enqueueDropScheduleOutbox.mockResolvedValue({ id: "schedule-outbox-1", idempotencyKey: "drop-schedule:drop-1" });
+    mocks.getDropScheduleDispatchState.mockResolvedValue({ status: "delivered", attempts: 1, retryable: false });
+    mocks.requeueOutboxEvent.mockImplementation(async (_db, outboxId) => ({
+      id: outboxId,
+      idempotencyKey: "drop-schedule:drop-1",
+      status: "pending",
+      attempts: 2,
+    }));
+    mocks.dispatchOutbox.mockResolvedValue(undefined);
+    outboxFind.mockResolvedValue(null);
     clubUpdate.mockResolvedValue({ matchedCount: 1 });
     dropUpdate.mockResolvedValue({ matchedCount: 1 });
     const collections: Record<string, unknown> = {
@@ -147,6 +165,7 @@ describe("club schedule preview and commit route", () => {
         updateOne: dropUpdate,
         insertOne: vi.fn().mockResolvedValue({ insertedId: "drop-new" }),
       },
+      outbox: { findOne: outboxFind },
     };
     mocks.getDb.mockResolvedValue({ collection: vi.fn((name: string) => collections[name]) });
     mocks.getMongoClient.mockResolvedValue({
@@ -177,6 +196,35 @@ describe("club schedule preview and commit route", () => {
     expect(dropUpdate).not.toHaveBeenCalled();
   });
 
+  it("exposes failed scheduling state to club administrators", async () => {
+    mocks.getDropScheduleDispatchState.mockResolvedValue({ status: "failed", attempts: 2, retryable: true });
+
+    const response = await GET(new Request("http://localhost"), {
+      params: Promise.resolve({ slug: baseClub.slug }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "failed", attempts: 2, retryable: true });
+  });
+
+  it("requeues failed scheduling work with the same outbox identity", async () => {
+    outboxFind.mockResolvedValue({
+      id: "schedule-outbox-1",
+      idempotencyKey: `drop-schedule:${drop.occurrenceKey}`,
+      status: "failed",
+      attempts: 1,
+    });
+
+    const response = await PUT(new Request("http://localhost", { method: "PUT" }), {
+      params: Promise.resolve({ slug: baseClub.slug }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mocks.requeueOutboxEvent).toHaveBeenCalledWith(expect.anything(), "schedule-outbox-1");
+    expect(mocks.dispatchOutbox).toHaveBeenCalledWith("schedule-outbox-1", "drop-schedule:drop-1");
+    await expect(response.json()).resolves.toMatchObject({ status: "pending", retryable: true });
+  });
+
   it("rejects stale reviewed status before any write", async () => {
     const preview = await (await route("POST", scheduleBody())).json();
     drop.status = "overdue";
@@ -202,21 +250,23 @@ describe("club schedule preview and commit route", () => {
       }),
       expect.any(Object),
     );
-    expect(mocks.scheduleDropTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "drop-1", scheduleVersion: 4 }),
-      [10080, 60],
+    expect(mocks.enqueueDropScheduleOutbox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        drop: expect.objectContaining({ id: "drop-1", scheduleVersion: 4 }),
+        reminderOffsetsMinutes: [10080, 60],
+      }),
     );
   });
 
   it("returns committed success with a durable scheduler warning", async () => {
     const preview = await (await route("POST", scheduleBody())).json();
-    mocks.scheduleDropTasks.mockRejectedValue(new Error("scheduler unavailable"));
+    mocks.dispatchOutbox.mockRejectedValue(new Error("scheduler unavailable"));
 
     const response = await route("PATCH", commitBody(preview));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      warning: "The schedule was saved, but the next drop tasks still need to be scheduled.",
+      warning: "The schedule was saved and its drop was queued for automatic scheduling.",
     });
     expect(clubUpdate).toHaveBeenCalledOnce();
   });
@@ -228,7 +278,7 @@ describe("club schedule preview and commit route", () => {
     const response = await route("PATCH", commitBody(preview));
 
     expect(response.status).toBe(500);
-    expect(mocks.scheduleDropTasks).not.toHaveBeenCalled();
+    expect(mocks.enqueueDropScheduleOutbox).not.toHaveBeenCalled();
   });
 
   it("keeps demo preview read-only and mutates schedule/drop only after commit", async () => {

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getDraftByIdForOwner: vi.fn(),
   updateDraftForOwner: vi.fn(),
   consumeRateLimit: vi.fn(),
+  reportOperationalError: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ requireViewer: mocks.requireViewer }));
@@ -25,6 +26,7 @@ vi.mock("@/lib/repository", () => ({
   updateDraftForOwner: mocks.updateDraftForOwner,
 }));
 vi.mock("@/lib/rate-limit", () => ({ consumeRateLimit: mocks.consumeRateLimit }));
+vi.mock("@/lib/observability", () => ({ reportOperationalError: mocks.reportOperationalError }));
 
 import { PATCH } from "@/app/api/drafts/[draftId]/route";
 
@@ -62,6 +64,14 @@ function request(overrides: Record<string, unknown> = {}) {
   });
 }
 
+function malformedRequest() {
+  return new Request("http://localhost/api/drafts/draft-1", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: "{",
+  });
+}
+
 function update(overrides?: Record<string, unknown>) {
   return PATCH(request(overrides), { params: Promise.resolve({ draftId: "draft-1" }) });
 }
@@ -95,6 +105,28 @@ describe("playlist draft update route", () => {
     expect(mocks.updateDraftForOwner).not.toHaveBeenCalled();
   });
 
+  it("returns a client error for malformed JSON", async () => {
+    const response = await PATCH(malformedRequest(), { params: Promise.resolve({ draftId: "draft-1" }) });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "Invalid playlist request." });
+    expect(mocks.getDraftByIdForOwner).not.toHaveBeenCalled();
+  });
+
+  it("classifies initial lookup failures as retryable server errors", async () => {
+    mocks.getDraftByIdForOwner.mockRejectedValueOnce(new Error("database unavailable"));
+
+    const response = await update();
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "Could not load this playlist. Try again." });
+    expect(mocks.reportOperationalError).toHaveBeenCalledWith(
+      "playlist-draft.lookup",
+      expect.any(Error),
+      { userId: "user-1", draftId: "draft-1" },
+    );
+  });
+
   it("updates a validated playlist and preserves the success response", async () => {
     const response = await update();
 
@@ -106,5 +138,34 @@ describe("playlist draft update route", () => {
       id: "draft-1",
       description: "An updated description.",
     }));
+  });
+
+  it("returns a retryable server error without exposing persistence details", async () => {
+    mocks.updateDraftForOwner.mockRejectedValueOnce(new Error("blob or database detail"));
+
+    const response = await update();
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "Could not save this playlist. Try again." });
+    expect(mocks.reportOperationalError).toHaveBeenCalledWith(
+      "playlist-draft.update",
+      expect.any(Error),
+      { userId: "user-1", draftId: "draft-1" },
+    );
+  });
+
+  it("classifies rate-limit storage failures as retryable server errors", async () => {
+    mocks.consumeRateLimit.mockRejectedValueOnce(new Error("rate-limit database unavailable"));
+
+    const response = await update({ artworkUrl: incomingArtworkUrl });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "Could not save this playlist. Try again." });
+    expect(mocks.discardArtwork).toHaveBeenCalledWith(incomingArtworkUrl);
+    expect(mocks.reportOperationalError).toHaveBeenCalledWith(
+      "playlist-draft.rate-limit",
+      expect.any(Error),
+      { userId: "user-1", draftId: "draft-1", operation: "update" },
+    );
   });
 });

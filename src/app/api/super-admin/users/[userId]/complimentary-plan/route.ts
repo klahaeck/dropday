@@ -2,7 +2,11 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getViewer } from "@/lib/auth";
-import { COMPLIMENTARY_PLAN_KEYS } from "@/lib/entitlements";
+import { reconcileClerkBillingEntitlement } from "@/lib/clerk-billing";
+import {
+  COMPLIMENTARY_PLAN_KEYS,
+  planFromPrivateMetadata,
+} from "@/lib/entitlements";
 
 const schema = z.object({
   complimentaryPlan: z.enum(COMPLIMENTARY_PLAN_KEYS).nullable(),
@@ -44,6 +48,11 @@ export async function PATCH(
       privateMetadata: {
         complimentaryPlan: parsed.data.complimentaryPlan,
       },
+    });
+    await reconcileClerkBillingEntitlement(userId, {
+      complimentaryPlan: planFromPrivateMetadata({
+        complimentaryPlan: parsed.data.complimentaryPlan,
+      }),
     });
 
     return NextResponse.json({

@@ -4,7 +4,12 @@ import { integrations } from "@/lib/env";
 import type { DropSlot } from "@/types/domain";
 
 export async function scheduleDropTasks(drop: DropSlot, reminderOffsetsMinutes: number[]) {
-  if (!integrations.trigger) return [];
+  if (!integrations.trigger) {
+    if (integrations.mongo) {
+      throw new Error("Trigger.dev is required to schedule persistent drops");
+    }
+    return [];
+  }
   const runIds: string[] = [];
   const processHandle = await tasks.trigger(
     "process-drop",
@@ -26,10 +31,18 @@ export async function scheduleDropTasks(drop: DropSlot, reminderOffsetsMinutes: 
 }
 
 export async function dispatchOutbox(outboxId: string, idempotencyKey: string) {
-  if (!integrations.trigger) return;
+  if (!integrations.trigger) {
+    if (integrations.mongo) {
+      throw new Error("Trigger.dev is required to dispatch persistent outbox work");
+    }
+    return;
+  }
+  // The time bucket deduplicates concurrent kicks while allowing the sweeper
+  // to create a fresh run after a failed Trigger.dev execution.
+  const retryBucket = Math.floor(Date.now() / 60_000);
   await tasks.trigger(
     "dispatch-outbox",
     { outboxId },
-    { idempotencyKey: `outbox:${idempotencyKey}` },
+    { idempotencyKey: `outbox:${idempotencyKey}:${retryBucket}` },
   );
 }

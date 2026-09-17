@@ -8,6 +8,7 @@ import {
   demoUserById,
 } from "@/lib/demo-data";
 import { deliverBrowserNotification } from "@/lib/browser-push";
+import { assertMembershipCapacity, EntitlementCapacityError } from "@/lib/entitlement-capacity";
 import { featureAccessForPlan, getMembershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
 import { createId } from "@/lib/repository";
@@ -184,7 +185,8 @@ export async function decideJoinRequest({
   let result: { request: JoinRequest; membership?: ClubMembership; demo: boolean } | undefined;
   let browserNotification: Notification | undefined;
 
-  await client.withSession(async (session) => session.withTransaction(async () => {
+  try {
+    await client.withSession(async (session) => session.withTransaction(async () => {
     const request = await db.collection<JoinRequest>("joinRequests").findOne({ id: requestId }, { session });
     if (!request) throw new JoinRequestDecisionError("Join request not found.", 404);
     if (request.status !== "pending") throw new JoinRequestDecisionError("This request was already handled.", 409);
@@ -206,15 +208,17 @@ export async function decideJoinRequest({
         { clubId: request.clubId, userId: request.userId },
         { session },
       );
-      const [requester, activeMembershipCount] = existingMembership?.status === "active"
-        ? [null, 0] as const
-        : await Promise.all([
-          db.collection<UserProfile>("users").findOne({ id: request.userId }, { session }),
-          db.collection<ClubMembership>("memberships").countDocuments(
-            { userId: request.userId, status: "active" },
-            { session },
-          ),
-        ]);
+      const requester = existingMembership?.status === "active"
+        ? null
+        : await db.collection<UserProfile>("users").findOne({ id: request.userId }, { session });
+      const activeMembershipCount = requester
+        ? await assertMembershipCapacity({
+            db,
+            session,
+            userId: request.userId,
+            timestamp,
+          })
+        : 0;
       const approval = planJoinRequestApproval({
         request,
         requester,
@@ -261,7 +265,13 @@ export async function decideJoinRequest({
     browserNotification = decisionNotification(resolvedRequest, club, decision, timestamp);
     await db.collection<Notification>("notifications").insertOne(browserNotification, { session });
     result = { request: resolvedRequest, membership, demo: false };
-  }));
+    }));
+  } catch (error) {
+    if (error instanceof EntitlementCapacityError) {
+      throw new JoinRequestDecisionError(error.message, error.status);
+    }
+    throw error;
+  }
 
   if (!result) throw new JoinRequestDecisionError("Could not update this request.", 500);
   if (browserNotification) await deliverBrowserNotification(browserNotification);

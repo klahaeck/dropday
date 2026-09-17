@@ -4,10 +4,10 @@ import { requireViewer } from "@/lib/auth";
 import {
   attachPlaylistToDrop,
   DropAttachmentError,
-  recordDropTriggerRunIds,
 } from "@/lib/drop-attachment";
 import { consumeRateLimit } from "@/lib/rate-limit";
-import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
+import { reportOperationalError } from "@/lib/observability";
+import { dispatchOutbox } from "@/lib/scheduler";
 
 const schema = z.object({
   draftId: z.string().trim().min(1).max(160),
@@ -46,38 +46,22 @@ export async function PUT(
       reviewedAction: parsed.data.reviewedAction,
       expectedCurrentDraftId: parsed.data.expectedCurrentDraftId,
     });
-    let scheduleFailed = false;
-    let deliveryFailed = false;
-    try {
-      const dropToSchedule = result.nextDrop
-        ?? (result.drop.status === "scheduled" ? result.drop : undefined);
-      const runIds = dropToSchedule
-        ? await scheduleDropTasks(
-            dropToSchedule,
-            result.club.schedule.reminderOffsetsMinutes,
-          )
-        : [];
-      if (runIds.length) {
-        await recordDropTriggerRunIds(dropToSchedule!.id, runIds);
-        dropToSchedule!.triggerRunIds = runIds;
-      }
-    } catch {
-      scheduleFailed = true;
-    }
-    if (result.outbox) {
+    let followUpKickFailed = false;
+    for (const event of [result.scheduleOutbox, result.outbox]) {
+      if (!event) continue;
       try {
-        await dispatchOutbox(result.outbox.id, result.outbox.idempotencyKey);
-      } catch {
-        deliveryFailed = true;
+        await dispatchOutbox(event.id, event.idempotencyKey);
+      } catch (error) {
+        reportOperationalError("drop.follow-up-dispatch", error, {
+          dropId: result.drop.id,
+          outboxId: event.id,
+        });
+        followUpKickFailed = true;
       }
     }
-    const warning = result.drop.status === "published"
-      ? scheduleFailed || deliveryFailed
-        ? "The playlist was published, but some follow-up tasks still need to be retried."
-        : undefined
-      : scheduleFailed
-        ? "The playlist is attached, but the drop schedule could not be re-confirmed."
-        : undefined;
+    const warning = followUpKickFailed
+      ? "The playlist was saved and its follow-up work was queued for automatic retry."
+      : undefined;
     return NextResponse.json({
       drop: result.drop,
       demo: result.demo,

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { MongoServerError } from "mongodb";
 import { deliverBrowserNotifications } from "@/lib/browser-push";
 import { getDb, getMongoClient } from "@/lib/db";
-import { escapeMongoRegex, matchesDiscoverQuery } from "@/lib/discover-search";
+import { matchesDiscoverQuery } from "@/lib/discover-search";
 import { integrations } from "@/lib/env";
 import {
   demoClubs,
@@ -48,28 +49,112 @@ export async function listActiveMembershipsForUser(
     .toArray();
 }
 
-export async function listPublicClubs(normalizedQuery = ""): Promise<Club[]> {
+export interface DashboardSnapshot {
+  clubs: Club[];
+  memberships: ClubMembership[];
+  notifications: Notification[];
+  scheduledDrops: DropSlot[];
+  assignedUsers: UserProfile[];
+  ownedClubCount: number;
+}
+
+export async function getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
   if (!integrations.mongo) {
-    return demoClubs
+    const memberships = demoMemberships.filter(
+      (membership) => membership.userId === userId && membership.status === "active",
+    );
+    const clubIds = new Set(memberships.map((membership) => membership.clubId));
+    const clubs = demoClubs.filter((club) => clubIds.has(club.id));
+    const scheduledDrops = demoDrops.filter(
+      (drop) => clubIds.has(drop.clubId) && drop.status === "scheduled",
+    );
+    const assignedUserIds = new Set(scheduledDrops.map((drop) => drop.assignedUserId));
+    return {
+      clubs,
+      memberships,
+      notifications: demoNotifications
+        .filter((notification) => notification.userId === userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 100),
+      scheduledDrops,
+      assignedUsers: demoUsers.filter((user) => assignedUserIds.has(user.id)),
+      ownedClubCount: memberships.filter((membership) => (
+        membership.role === "owner"
+        && clubs.some((club) => club.id === membership.clubId && club.custody.status === "active")
+      )).length,
+    };
+  }
+
+  const db = await getDb();
+  const memberships = await db.collection<ClubMembership>("memberships")
+    .find({ userId, status: "active" })
+    .toArray();
+  const clubIds = memberships.map((membership) => membership.clubId);
+  const [clubs, notifications, scheduledDrops] = await Promise.all([
+    clubIds.length
+      ? db.collection<Club>("clubs").find({ id: { $in: clubIds } }).toArray()
+      : Promise.resolve([]),
+    db.collection<Notification>("notifications")
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .toArray(),
+    clubIds.length
+      ? db.collection<DropSlot>("drops")
+        .find({ clubId: { $in: clubIds }, status: "scheduled" })
+        .sort({ scheduledFor: 1 })
+        .toArray()
+      : Promise.resolve([]),
+  ]);
+  const assignedUserIds = [...new Set(scheduledDrops.map((drop) => drop.assignedUserId))];
+  const assignedUsers = assignedUserIds.length
+    ? await db.collection<UserProfile>("users").find({ id: { $in: assignedUserIds } }).toArray()
+    : [];
+  const clubsById = new Map(clubs.map((club) => [club.id, club]));
+  const ownedClubCount = memberships.filter((membership) => (
+    membership.role === "owner"
+    && clubsById.get(membership.clubId)?.custody.status === "active"
+  )).length;
+  return { clubs, memberships, notifications, scheduledDrops, assignedUsers, ownedClubCount };
+}
+
+export interface PublicClubPage {
+  clubs: Club[];
+  hasNext: boolean;
+}
+
+export async function listPublicClubs(
+  normalizedQuery = "",
+  requestedPage = 1,
+  pageSize = 24,
+): Promise<PublicClubPage> {
+  const page = Math.min(Math.max(Math.trunc(requestedPage), 1), 100);
+  const limit = Math.min(Math.max(Math.trunc(pageSize), 1), 48);
+  const offset = (page - 1) * limit;
+  if (!integrations.mongo) {
+    const matches = demoClubs
       .filter((club) => club.visibility === "public" && club.custody.status !== "archived")
       .filter((club) => matchesDiscoverQuery(club, normalizedQuery))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return { clubs: matches.slice(offset, offset + limit), hasNext: matches.length > offset + limit };
   }
   const db = await getDb();
-  const search = normalizedQuery
-    ? {
-        $or: [
-          { name: { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
-          { description: { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
-          { "currentTheme.name": { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
-          { "currentTheme.guidance": { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
-        ],
-      }
-    : {};
-  return db.collection<Club>("clubs")
-    .find({ visibility: "public", "custody.status": { $ne: "archived" }, ...search })
-    .sort({ updatedAt: -1 })
-    .toArray();
+  const filter = {
+    visibility: "public" as const,
+    // The closed set preserves the non-archived contract while keeping the
+    // following updatedAt sort usable from the compound discover index.
+    "custody.status": { $in: ["active", "grace"] },
+    ...(normalizedQuery ? { $text: { $search: normalizedQuery } } : {}),
+  };
+  const cursor = db.collection<Club>("clubs")
+    .find(filter)
+    .sort(normalizedQuery
+      ? { score: { $meta: "textScore" }, updatedAt: -1 }
+      : { updatedAt: -1 })
+    .skip(offset)
+    .limit(limit + 1);
+  const clubs = await cursor.toArray();
+  return { clubs: clubs.slice(0, limit), hasNext: clubs.length > limit };
 }
 
 export async function getClubBySlug(slug: string): Promise<Club | null> {
@@ -213,38 +298,146 @@ export async function markAllNotificationsRead(
   return result.modifiedCount;
 }
 
-export async function listMessages(threadType: "club" | "drop", threadId: string): Promise<ChatMessage[]> {
-  if (!integrations.mongo) return demoMessages.filter((item) => item.threadType === threadType && item.threadId === threadId);
-  const messages = await (await getDb()).collection<ChatMessage>("messages")
-    .find({ threadType, threadId }, { projection: { _id: 0 } })
-    .sort({ createdAt: 1 })
-    .limit(100)
-    .toArray();
-  return messages;
+interface MessageCursorValue {
+  createdAt: string;
+  id: string;
+}
+
+export interface MessagePage {
+  messages: ChatMessage[];
+  olderCursor?: string;
+  newerCursor?: string;
+  hasMoreNewer: boolean;
+}
+
+export class InvalidMessageCursorError extends Error {
+  constructor() {
+    super("Invalid message cursor");
+    this.name = "InvalidMessageCursorError";
+  }
+}
+
+function encodeMessageCursor(message: Pick<ChatMessage, "createdAt" | "id">): string {
+  return Buffer.from(JSON.stringify({ createdAt: message.createdAt, id: message.id })).toString("base64url");
+}
+
+function decodeMessageCursor(cursor: string): MessageCursorValue {
+  try {
+    const value = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as Partial<MessageCursorValue>;
+    if (
+      typeof value.createdAt !== "string"
+      || Number.isNaN(Date.parse(value.createdAt))
+      || typeof value.id !== "string"
+      || !value.id
+    ) throw new InvalidMessageCursorError();
+    return { createdAt: value.createdAt, id: value.id };
+  } catch (error) {
+    if (error instanceof InvalidMessageCursorError) throw error;
+    throw new InvalidMessageCursorError();
+  }
+}
+
+function compareMessages(left: ChatMessage, right: MessageCursorValue): number {
+  const createdAt = left.createdAt.localeCompare(right.createdAt);
+  return createdAt || left.id.localeCompare(right.id);
+}
+
+export async function listMessagesPage(
+  threadType: "club" | "drop",
+  threadId: string,
+  options: { before?: string; after?: string; limit?: number } = {},
+): Promise<MessagePage> {
+  if (options.before && options.after) throw new InvalidMessageCursorError();
+  const limit = Math.min(Math.max(Math.trunc(options.limit ?? 50), 1), 100);
+  const before = options.before ? decodeMessageCursor(options.before) : null;
+  const after = options.after ? decodeMessageCursor(options.after) : null;
+  let raw: ChatMessage[];
+
+  if (!integrations.mongo) {
+    const matches = demoMessages
+      .filter((message) => message.threadType === threadType && message.threadId === threadId)
+      .sort((left, right) => compareMessages(left, right));
+    const filtered = before
+      ? matches.filter((message) => compareMessages(message, before) < 0).reverse()
+      : after
+        ? matches.filter((message) => compareMessages(message, after) > 0)
+        : [...matches].reverse();
+    raw = filtered.slice(0, limit + 1);
+  } else {
+    const boundary = before ?? after;
+    const direction = after ? 1 : -1;
+    const filter = boundary
+      ? {
+          threadType,
+          threadId,
+          $or: [
+            { createdAt: { [after ? "$gt" : "$lt"]: boundary.createdAt } },
+            {
+              createdAt: boundary.createdAt,
+              id: { [after ? "$gt" : "$lt"]: boundary.id },
+            },
+          ],
+        }
+      : { threadType, threadId };
+    raw = await (await getDb()).collection<ChatMessage>("messages")
+      .find(filter, { projection: { _id: 0 } })
+      .sort({ createdAt: direction, id: direction })
+      .limit(limit + 1)
+      .toArray();
+  }
+
+  const hasMore = raw.length > limit;
+  const selected = raw.slice(0, limit);
+  const messages = after ? selected : selected.reverse();
+  return {
+    messages,
+    ...(!after && hasMore && messages[0]
+      ? { olderCursor: encodeMessageCursor(messages[0]) }
+      : {}),
+    ...(messages.at(-1) ? { newerCursor: encodeMessageCursor(messages.at(-1)!) } : {}),
+    hasMoreNewer: Boolean(after && hasMore),
+  };
 }
 
 export async function insertMessage(
   message: ChatMessage,
   notifications: Notification[] = [],
-): Promise<void> {
+): Promise<{ message: ChatMessage; created: boolean }> {
   if (!integrations.mongo) {
+    const existing = message.clientMessageId
+      ? demoMessages.find((candidate) => (
+        candidate.authorId === message.authorId
+        && candidate.clientMessageId === message.clientMessageId
+      ))
+      : undefined;
+    if (existing) return { message: existing, created: false };
     demoMessages.push(message);
     demoNotifications.unshift(...notifications);
-    return;
+    return { message, created: true };
   }
 
   const db = await getDb();
-  if (!notifications.length) {
-    await db.collection<ChatMessage>("messages").insertOne(message);
-    return;
+  try {
+    if (!notifications.length) {
+      await db.collection<ChatMessage>("messages").insertOne(message);
+    } else {
+      const client = await getMongoClient();
+      await client.withSession(async (session) => session.withTransaction(async () => {
+        await db.collection<ChatMessage>("messages").insertOne(message, { session });
+        await db.collection<Notification>("notifications").insertMany(notifications, { session });
+      }));
+      await deliverBrowserNotifications(notifications);
+    }
+    return { message, created: true };
+  } catch (error) {
+    if (!(error instanceof MongoServerError) || error.code !== 11000 || !message.clientMessageId) throw error;
+    const existing = await db.collection<ChatMessage>("messages").findOne(
+      { authorId: message.authorId, clientMessageId: message.clientMessageId },
+      { projection: { _id: 0 } },
+    );
+    if (!existing) throw error;
+    return { message: existing, created: false };
   }
-
-  const client = await getMongoClient();
-  await client.withSession(async (session) => session.withTransaction(async () => {
-    await db.collection<ChatMessage>("messages").insertOne(message, { session });
-    await db.collection<Notification>("notifications").insertMany(notifications, { session });
-  }));
-  await deliverBrowserNotifications(notifications);
 }
 
 export async function insertDraft(draft: PlaylistDraft): Promise<void> {

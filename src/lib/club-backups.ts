@@ -10,6 +10,7 @@ import { snapshotPlaylistDraft } from "@/lib/drop-attachment";
 import { DropPublicationConflict, publishDropInTransaction } from "@/lib/drop-publication";
 import { integrations } from "@/lib/env";
 import { nextActiveMember, preserveTurn, rotateQueue } from "@/lib/queue";
+import type { DurableOutboxEvent } from "@/lib/outbox";
 import { createId } from "@/lib/repository";
 import { nextOccurrences, occurrenceKey } from "@/lib/scheduling";
 import type {
@@ -341,6 +342,7 @@ export interface BackupRecoveryResult {
   drop: DropSlot;
   nextDrop?: DropSlot;
   outbox: OutboxEvent;
+  scheduleOutbox?: DurableOutboxEvent;
   backup: ClubBackup;
 }
 
@@ -441,12 +443,13 @@ export async function recoverOverdueDropWithBackup({
         { session },
       );
       assertAdminMembership(membership);
-      const [drop, backup] = await Promise.all([
-        club.activeDropId
-          ? db.collection<DropSlot>("drops").findOne({ id: club.activeDropId }, { session })
-          : Promise.resolve(null),
-        db.collection<ClubBackup>("clubBackups").findOne({ id: backupId }, { session }),
-      ]);
+      const drop = club.activeDropId
+        ? await db.collection<DropSlot>("drops").findOne({ id: club.activeDropId }, { session })
+        : null;
+      const backup = await db.collection<ClubBackup>("clubBackups").findOne(
+        { id: backupId },
+        { session },
+      );
       const recovery = planBackupRecovery({
         club,
         drop,
@@ -483,6 +486,7 @@ export async function recoverOverdueDropWithBackup({
         drop: publication.publishedDrop,
         nextDrop: publication.nextDrop,
         outbox: publication.outbox,
+        scheduleOutbox: publication.scheduleOutbox,
         backup: recovery.usedBackup,
       };
     }));

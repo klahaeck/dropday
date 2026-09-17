@@ -9,6 +9,7 @@ import {
 } from "@/lib/club-member-role";
 import { deliverBrowserNotification } from "@/lib/browser-push";
 import { getDb, getMongoClient } from "@/lib/db";
+import { assertOwnershipCapacity, EntitlementCapacityError } from "@/lib/entitlement-capacity";
 import { demoNotifications } from "@/lib/demo-data";
 import { getOwnershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
@@ -168,35 +169,24 @@ export async function PATCH(
 
       let targetCanOwnAnotherClub = true;
       if (parsed.data.role === "owner" && currentTarget?.role !== "owner") {
-        const [targetProfile, ownerMemberships] = await Promise.all([
-          db.collection<UserProfile>("users").findOne(
-            { id: memberId },
-            { session },
-          ),
-          db.collection<ClubMembership>("memberships")
-            .find(
-              { userId: memberId, role: "owner", status: "active" },
-              { session },
-            )
-            .toArray(),
-        ]);
-        const ownedClubCount = ownerMemberships.length
-          ? await db.collection<Club>("clubs").countDocuments(
-            {
-              id: { $in: ownerMemberships.map((membership) => membership.clubId) },
-              "custody.status": "active",
-            },
-            { session },
-          )
-          : 0;
-        targetCanOwnAnotherClub = Boolean(
-          targetProfile
-          && targetProfile.plan !== "free"
-          && getOwnershipEntitlement(
-            targetProfile.plan,
-            ownedClubCount,
-          ).canOwnAnotherClub,
+        const targetProfile = await db.collection<UserProfile>("users").findOne(
+          { id: memberId },
+          { session },
         );
+        targetCanOwnAnotherClub = Boolean(targetProfile);
+        if (targetProfile) {
+          try {
+            await assertOwnershipCapacity({
+              db,
+              session,
+              userId: memberId,
+              timestamp,
+            });
+          } catch (error) {
+            if (!(error instanceof EntitlementCapacityError)) throw error;
+            targetCanOwnAnotherClub = false;
+          }
+        }
       }
 
       let planned;

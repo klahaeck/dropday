@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   getViewer: vi.fn(),
   clerkClient: vi.fn(),
   updateUserMetadata: vi.fn(),
+  reconcileClerkBillingEntitlement: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -12,6 +13,10 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@clerk/nextjs/server", () => ({
   clerkClient: mocks.clerkClient,
+}));
+
+vi.mock("@/lib/clerk-billing", () => ({
+  reconcileClerkBillingEntitlement: mocks.reconcileClerkBillingEntitlement,
 }));
 
 import { PATCH } from "@/app/api/super-admin/users/[userId]/complimentary-plan/route";
@@ -35,6 +40,7 @@ describe("complimentary-plan administration route", () => {
       users: { updateUserMetadata: mocks.updateUserMetadata },
     });
     mocks.updateUserMetadata.mockResolvedValue({ id: "user_target" });
+    mocks.reconcileClerkBillingEntitlement.mockResolvedValue({ nextPlan: "free" });
   });
 
   it("requires authentication", async () => {
@@ -64,6 +70,9 @@ describe("complimentary-plan administration route", () => {
     expect(mocks.updateUserMetadata).toHaveBeenCalledWith("user_target", {
       privateMetadata: { complimentaryPlan: "resident_unlimited" },
     });
+    expect(mocks.reconcileClerkBillingEntitlement).toHaveBeenCalledWith("user_target", {
+      complimentaryPlan: "highest",
+    });
     await expect(response.json()).resolves.toEqual({
       userId: "user_target",
       complimentaryPlan: "resident_unlimited",
@@ -78,6 +87,9 @@ describe("complimentary-plan administration route", () => {
     expect(response.status).toBe(200);
     expect(mocks.updateUserMetadata).toHaveBeenCalledWith("user_target", {
       privateMetadata: { complimentaryPlan: null },
+    });
+    expect(mocks.reconcileClerkBillingEntitlement).toHaveBeenCalledWith("user_target", {
+      complimentaryPlan: null,
     });
   });
 

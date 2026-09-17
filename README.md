@@ -10,22 +10,33 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The app starts in demo mode when service credentials are absent. The brochure, dashboard, clubs, playlist library, queue, detail rooms, chats, and forms remain explorable with representative data. Appearance defaults to the system color scheme and can be fixed to light or dark from `/app/settings`; the preference is stored locally and synced to MongoDB for authenticated users.
+The app starts in demo mode only when `NEXT_PUBLIC_DEMO_MODE=true`. The brochure, dashboard, clubs, playlist library, queue, detail rooms, chats, and forms remain explorable with representative data. Demo mode is intentionally isolated and refuses to start against MongoDB without Clerk. Appearance defaults to the system color scheme and can be fixed to light or dark from `/app/settings`; the preference is stored locally and synced to MongoDB for authenticated users.
 
 ## Verification
 
 ```bash
+npm ci
+npm audit --audit-level=high
 npm run typecheck
 npm run lint
 npm test
+npm run test:ui
+npm run test:coverage
+npx playwright install chromium
+npm run test:e2e
 npm run build
 ```
+
+CI runs the browser journeys in desktop and mobile Chromium profiles. Local
+runs can point at an existing Chromium-compatible browser with
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when downloading the pinned Playwright
+browser is not practical.
 
 ## Production services
 
 Copy `.env.example` to `.env.local` and configure:
 
-- `MONGODB_URI`: MongoDB Atlas connection string. The shared connection in `src/lib/db.ts` provisions required indexes before its first database access in each app or worker process.
+- `MONGODB_URI`: MongoDB Atlas connection string. Required indexes are managed by explicit, versioned migrations rather than request-time DDL.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`: Clerk application credentials.
 - `CLERK_WEBHOOK_SIGNING_SECRET`: webhook endpoint secret for `/api/webhooks/clerk`.
 - `ABLY_API_KEY` and `NEXT_PUBLIC_ABLY_ENABLED=true`: authenticated club and drop channels.
@@ -34,9 +45,37 @@ Copy `.env.example` to `.env.local` and configure:
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`: native browser notifications for opted-in devices. Generate one persistent key pair with `npx web-push generate-vapid-keys`; use an HTTPS URL or `mailto:` address for the subject, and configure the same values for both the web deployment and Trigger.dev tasks.
 - `BLOB_READ_WRITE_TOKEN`: a public Vercel Blob store used for optional playlist cover images.
 
-Set `NEXT_PUBLIC_DEMO_MODE=false` after MongoDB and Clerk are configured.
+Set `NEXT_PUBLIC_DEMO_MODE=false` after MongoDB and Clerk are configured. Both Clerk keys must be present together, and persistent mode requires Clerk and MongoDB to be configured together so it cannot fall back to process-local demo data.
 
 Create and connect a public Blob store from the Vercel project’s Storage dashboard. Vercel adds `BLOB_READ_WRITE_TOKEN` to the selected deployment environments automatically; use `vercel env pull` when you need the token locally.
+
+### MongoDB index migrations
+
+Run index migrations before deploying application code that depends on a new
+uniqueness or query contract:
+
+```bash
+npm run db:indexes
+```
+
+The command uses `MONGODB_URI` and `MONGODB_DB`, is idempotent, and records each
+completed migration in `schemaMigrations`. Trigger.dev also runs the same
+provisioner daily as a repair path; that scheduled task is not a substitute for
+the pre-deployment command on a fresh environment.
+
+Before adding unique indexes, the migration checks existing logical IDs and
+compound contracts—including outbox idempotency, webhook receipts, message
+client IDs, and active club invitations—and stops with the affected contract
+and duplicate values instead of silently choosing a record. Duplicate rate-limit buckets are ephemeral counters,
+so that migration safely retains one bucket and removes duplicate documents
+before creating the unique `rateLimits.key` index.
+
+Notification outbox work keeps recipient, browser-subscription, and realtime
+delivery state in MongoDB. Provider failures remain retryable through leased
+claims; confirmed browser devices are not sent again on a partial retry, and
+realtime publishes use the outbox event ID as the provider idempotency key.
+Persistent MongoDB deployments require Trigger.dev: missing Trigger credentials
+surface as queued/failed scheduling work instead of falsely reporting success.
 
 ### Clerk Billing
 

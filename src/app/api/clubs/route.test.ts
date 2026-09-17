@@ -6,7 +6,9 @@ const mocks = vi.hoisted(() => ({
   createId: vi.fn(),
   getDb: vi.fn(),
   getMongoClient: vi.fn(),
-  scheduleDropTasks: vi.fn(),
+  assertOwnershipCapacity: vi.fn(),
+  enqueueDropScheduleOutbox: vi.fn(),
+  dispatchOutbox: vi.fn(),
   discardArtwork: vi.fn(),
   isOwnedArtworkUrl: vi.fn(() => true),
   integrations: { mongo: true },
@@ -14,9 +16,14 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({ requireViewer: mocks.requireViewer }));
 vi.mock("@/lib/db", () => ({ getDb: mocks.getDb, getMongoClient: mocks.getMongoClient }));
+vi.mock("@/lib/entitlement-capacity", () => ({
+  assertOwnershipCapacity: mocks.assertOwnershipCapacity,
+  EntitlementCapacityError: class EntitlementCapacityError extends Error {},
+}));
+vi.mock("@/lib/outbox", () => ({ enqueueDropScheduleOutbox: mocks.enqueueDropScheduleOutbox }));
 vi.mock("@/lib/env", () => ({ integrations: mocks.integrations }));
 vi.mock("@/lib/repository", () => ({ countOwnedClubs: mocks.countOwnedClubs, createId: mocks.createId }));
-vi.mock("@/lib/scheduler", () => ({ scheduleDropTasks: mocks.scheduleDropTasks }));
+vi.mock("@/lib/scheduler", () => ({ dispatchOutbox: mocks.dispatchOutbox }));
 vi.mock("@/lib/blob-artwork", () => ({
   discardArtwork: mocks.discardArtwork,
   isOwnedArtworkUrl: mocks.isOwnedArtworkUrl,
@@ -67,7 +74,9 @@ describe("club creation route", () => {
       .mockReturnValueOnce("club-1")
       .mockReturnValueOnce("drop-1")
       .mockReturnValueOnce("membership-1");
-    mocks.scheduleDropTasks.mockResolvedValue(["run-1"]);
+    mocks.assertOwnershipCapacity.mockResolvedValue(undefined);
+    mocks.enqueueDropScheduleOutbox.mockResolvedValue({ id: "schedule-outbox-1", idempotencyKey: "drop-schedule:drop-1" });
+    mocks.dispatchOutbox.mockResolvedValue(undefined);
 
     const collections: Record<string, unknown> = {
       clubs: {
@@ -95,7 +104,8 @@ describe("club creation route", () => {
     expect(response.status).toBe(201);
     expect(result.warning).toBeUndefined();
     expect(insertedClubs[0]).toMatchObject({ visibility: "private", slug: "needle-exchange" });
-    expect(mocks.scheduleDropTasks).toHaveBeenCalledOnce();
+    expect(mocks.enqueueDropScheduleOutbox).toHaveBeenCalledOnce();
+    expect(mocks.dispatchOutbox).toHaveBeenCalledWith("schedule-outbox-1", "drop-schedule:drop-1");
   });
 
   it("accepts a valid fallback timezone", async () => {
@@ -106,12 +116,12 @@ describe("club creation route", () => {
   });
 
   it("returns committed partial success when scheduler setup fails", async () => {
-    mocks.scheduleDropTasks.mockRejectedValue(new Error("scheduler unavailable"));
+    mocks.dispatchOutbox.mockRejectedValue(new Error("scheduler unavailable"));
 
     const response = await POST(request({ ...validBody, visibility: "public" }));
     await expect(response.json()).resolves.toMatchObject({
       slug: "needle-exchange",
-      warning: "The club was created, but its first drop tasks still need to be scheduled.",
+      warning: "The club was created and its first drop was queued for automatic scheduling.",
     });
     expect(response.status).toBe(201);
     expect(insertedClubs[0]).toMatchObject({ visibility: "public" });

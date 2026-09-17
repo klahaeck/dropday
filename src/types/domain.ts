@@ -42,6 +42,7 @@ export interface UserProfile {
   generatedNameKey?: string;
   imageUrl?: string;
   primaryEmail?: string;
+  billedPlan?: PlanKey;
   plan: PlanKey;
   emailNotifications: boolean;
   emailPreferences?: EmailPreferences;
@@ -101,7 +102,6 @@ export interface Club {
   schedule: RecurrenceConfig;
   activeDropId?: Id;
   custody: OwnershipCustody;
-  joinToken?: string;
   createdAt: IsoDate;
   updatedAt: IsoDate;
 }
@@ -120,12 +120,13 @@ export interface ClubMembership {
 export interface ClubInvitation {
   id: Id;
   clubId: Id;
-  email: string;
   invitedByUserId: Id;
   tokenHash: string;
-  status: "pending" | "accepted" | "revoked" | "expired";
+  status: "active" | "revoked" | "expired";
   expiresAt: IsoDate;
+  revokedAt?: IsoDate;
   createdAt: IsoDate;
+  updatedAt: IsoDate;
 }
 
 export interface JoinRequest {
@@ -219,6 +220,7 @@ export interface ChatMessage {
   authorId: Id;
   authorName: string;
   authorInitials: string;
+  clientMessageId?: string;
   body: string;
   mentionedUserIds?: Id[];
   reactions: ChatReaction[];

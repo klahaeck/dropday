@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, CalendarClock, LockKeyhole, Settings, Users } from "lucide-react";
@@ -14,6 +15,10 @@ import { ThemePanel } from "@/components/theme-panel";
 import { requireViewer } from "@/lib/auth";
 import { getClubAccentForeground, normalizeClubAccent } from "@/lib/club-accent";
 import { canUseClubManagement } from "@/lib/club-management";
+import {
+  CLUB_INVITATION_SESSION_COOKIE,
+  validateClubInvitationSession,
+} from "@/lib/club-invitation-sessions";
 import { canViewDropContent, hasDropReachedScheduledTime } from "@/lib/drop-visibility";
 import { integrations } from "@/lib/env";
 import { formatDateTime, formatDateTimeParts, scheduleLabel } from "@/lib/format";
@@ -26,10 +31,14 @@ import {
   getUsersByIds,
   listPendingJoinRequests,
   listDrafts,
-  listMessages,
+  listMessagesPage,
 } from "@/lib/repository";
 
-export default async function ClubPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ClubPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const { profile, features } = await requireViewer();
   const club = await getClubBySlug(slug);
@@ -46,6 +55,14 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
   const canManage = canUseClubManagement(viewerMembership, features.clubAdminTools);
 
   if (!isMember) {
+    if (club.visibility === "private") {
+      const sessionToken = (await cookies()).get(CLUB_INVITATION_SESSION_COOKIE)?.value;
+      if (!(await validateClubInvitationSession({
+        clubId: club.id,
+        userId: profile.id,
+        sessionToken,
+      }))) notFound();
+    }
     const pendingRequest = await getPendingJoinRequest(club.id, profile.id);
     return <>
       <section className={`club-hero${club.imageUrl ? " club-hero-has-image" : ""}`} style={clubAccentStyle}>{club.imageUrl && <Image src={club.imageUrl} alt="" fill sizes="100vw" className="club-hero-artwork" unoptimized />}<div className="club-hero-content"><Pill tone={club.visibility === "private" ? "dark" : "green"}>{club.visibility === "private" ? <LockKeyhole size={12} /> : null}{club.visibility}</Pill><h1>{club.name}</h1><ClubDescription html={club.descriptionHtml} fallback={club.description} className="club-hero-description" /><div className="club-hero-meta"><span><Users size={17} /> {club.memberCount} members</span><span><CalendarClock size={17} /> {scheduleLabel(club.schedule.rrule, club.schedule.localTime)}</span></div></div></section>
@@ -53,9 +70,9 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
     </>;
   }
 
-  const [drops, messages, pendingJoinRequests, drafts] = await Promise.all([
+  const [drops, messagePage, pendingJoinRequests, drafts] = await Promise.all([
     getClubDrops(club.id),
-    listMessages("club", club.id),
+    listMessagesPage("club", club.id),
     canManage ? listPendingJoinRequests(club.id) : Promise.resolve([]),
     features.playlistLibrary ? listDrafts(profile.id) : Promise.resolve([]),
   ]);
@@ -145,6 +162,6 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
           <td><Link className="past-drop-link" href={href} aria-label={`Open ${playlist.title}`}><span>View</span><ArrowUpRight size={15} /></Link></td>
         </tr>; })}</tbody>
       </table></div> : <div className="empty-state"><h2>The first drop is still ahead.</h2><p>This club’s archive begins when the first playlist publishes.</p></div>}
-    </div><aside id="club-chat"><ChatPanel threadType="club" threadId={club.id} initialMessages={messages} currentUser={{ id: profile.id, displayName: profile.displayName, initials: profile.initials }} mentionableUsers={chatMembers} realtimeEnabled={integrations.ably} /></aside></div>
+    </div><aside id="club-chat"><ChatPanel threadType="club" threadId={club.id} initialMessages={messagePage.messages} initialOlderCursor={messagePage.olderCursor} initialNewerCursor={messagePage.newerCursor} currentUser={{ id: profile.id, displayName: profile.displayName, initials: profile.initials }} mentionableUsers={chatMembers} realtimeEnabled={integrations.ably} /></aside></div>
   </>;
 }

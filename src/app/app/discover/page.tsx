@@ -7,10 +7,14 @@ import { listPublicClubs } from "@/lib/repository";
 export default async function DiscoverPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string | string[] }>;
+  searchParams: Promise<{ q?: string | string[]; page?: string | string[] }>;
 }) {
-  const query = normalizeDiscoverQuery((await searchParams).q);
-  const clubs = await listPublicClubs(query);
+  const requested = await searchParams;
+  const query = normalizeDiscoverQuery(requested.q);
+  const rawPage = Array.isArray(requested.page) ? requested.page[0] : requested.page;
+  const parsedPage = Number.parseInt(rawPage ?? "1", 10);
+  const page = Number.isFinite(parsedPage) ? Math.min(Math.max(parsedPage, 1), 100) : 1;
+  const result = await listPublicClubs(query, page);
 
-  return <><header className="page-header"><div><span className="section-kicker">Find your people</span><h1>Discover clubs</h1><p>Public clubs share their premise, cadence, and current theme. The playlists stay inside until you join.</p></div></header><form action="/app/discover" method="get" className="form-shell discover-search-form"><div className="field discover-search-field"><label className="sr-only" htmlFor="club-search">Search public clubs</label><div className="discover-search-input"><Search size={17} aria-hidden="true" /><input id="club-search" name="q" defaultValue={query} placeholder="Search by name, theme, or description" maxLength={100} /></div></div><div className="discover-search-actions"><button type="submit" className="button button-dark">Search</button>{query && <Link href="/app/discover" className="button button-ghost">Clear</Link>}</div></form><DiscoverResults clubs={clubs} query={query} /></>;
+  return <><header className="page-header"><div><span className="section-kicker">Find your people</span><h1>Discover clubs</h1><p>Public clubs share their premise, cadence, and current theme. The playlists stay inside until you join.</p></div></header><form action="/app/discover" method="get" className="form-shell discover-search-form"><div className="field discover-search-field"><label className="sr-only" htmlFor="club-search">Search public clubs</label><div className="discover-search-input"><Search size={17} aria-hidden="true" /><input id="club-search" name="q" defaultValue={query} placeholder="Search by name, theme, or description" maxLength={100} /></div></div><div className="discover-search-actions"><button type="submit" className="button button-dark">Search</button>{query && <Link href="/app/discover" className="button button-ghost">Clear</Link>}</div></form><DiscoverResults clubs={result.clubs} query={query} page={page} hasNext={result.hasNext} /></>;
 }

@@ -38,6 +38,8 @@ export async function copyTextToClipboard(
   throw new Error("The join link could not be copied.");
 }
 
-export function clubJoinUrl(origin: string, clubSlug: string): string {
-  return new URL(`/app/clubs/${encodeURIComponent(clubSlug)}`, origin).toString();
+export function clubJoinUrl(origin: string, clubSlug: string, invitationToken: string): string {
+  const url = new URL(`/app/clubs/${encodeURIComponent(clubSlug)}/invite`, origin);
+  url.hash = invitationToken;
+  return url.toString();
 }
