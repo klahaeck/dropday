@@ -11,6 +11,7 @@ import {
   publishDropInTransaction,
 } from "@/lib/drop-publication";
 import { nextActiveMember, rotateQueue } from "@/lib/queue";
+import type { DurableOutboxEvent } from "@/lib/outbox";
 import { createId } from "@/lib/repository";
 import { nextOccurrences, occurrenceKey } from "@/lib/scheduling";
 import type {
@@ -205,6 +206,7 @@ export interface DropAttachmentResult {
   demo: boolean;
   nextDrop?: DropSlot;
   outbox?: OutboxEvent;
+  scheduleOutbox?: DurableOutboxEvent;
   action: ReviewedDropAttachmentAction;
   playlist: PlaylistSnapshot;
 }
@@ -289,6 +291,7 @@ export async function attachPlaylistToDrop({
           demo: false,
           nextDrop: publication.nextDrop,
           outbox: publication.outbox,
+          scheduleOutbox: publication.scheduleOutbox,
           action,
           playlist,
         };

@@ -2,7 +2,9 @@ import { getDb, getMongoClient } from "@/lib/db";
 import { integrations } from "@/lib/env";
 import { publishDropInTransaction } from "@/lib/drop-publication";
 import { createId } from "@/lib/repository";
-import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
+import type { DurableOutboxEvent } from "@/lib/outbox";
+import { reportOperationalError } from "@/lib/observability";
+import { dispatchOutbox } from "@/lib/scheduler";
 import type { Club, DropSlot, OutboxEvent } from "@/types/domain";
 
 export async function processScheduledDrop(dropId: string, scheduleVersion: number) {
@@ -11,6 +13,7 @@ export async function processScheduledDrop(dropId: string, scheduleVersion: numb
   const client = await getMongoClient();
   let nextDrop: DropSlot | undefined;
   let outbox: OutboxEvent | undefined;
+  let scheduleOutbox: DurableOutboxEvent | undefined;
   let result: "published" | "overdue" | "stale" = "stale";
 
   await client.withSession(async (session) => {
@@ -42,15 +45,22 @@ export async function processScheduledDrop(dropId: string, scheduleVersion: numb
       });
       nextDrop = publication.nextDrop;
       outbox = publication.outbox;
+      scheduleOutbox = publication.scheduleOutbox;
       result = "published";
     });
   });
 
-  if (nextDrop) {
-    const club = await db.collection<Club>("clubs").findOne({ id: nextDrop.clubId });
-    const runIds = await scheduleDropTasks(nextDrop, club?.schedule.reminderOffsetsMinutes ?? []);
-    if (runIds.length) await db.collection<DropSlot>("drops").updateOne({ id: nextDrop.id }, { $set: { triggerRunIds: runIds } });
+  for (const event of [scheduleOutbox, outbox]) {
+    if (!event) continue;
+    try {
+      await dispatchOutbox(event.id, event.idempotencyKey);
+    } catch (error) {
+      reportOperationalError("scheduled-drop.follow-up-dispatch", error, {
+        dropId,
+        outboxId: event.id,
+        result,
+      });
+    }
   }
-  if (outbox) await dispatchOutbox(outbox.id, outbox.idempotencyKey);
   return { status: result, nextDropId: nextDrop?.id };
 }

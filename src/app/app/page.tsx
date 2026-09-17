@@ -17,24 +17,20 @@ import {
   getZonedGreeting,
 } from "@/lib/format";
 import {
-  countOwnedClubs,
-  getClubDrops,
-  getUserProfile,
-  listActiveMembershipsForUser,
-  listClubsForUser,
-  listNotifications,
+  getDashboardSnapshot,
 } from "@/lib/repository";
 
 export default async function DashboardPage() {
   const nowIso = new Date().toISOString();
   const { profile, features } = await requireViewer();
-  const [clubs, notifications, activeMemberships, ownedCount] = await Promise.all([
-    listClubsForUser(profile.id),
-    listNotifications(profile.id),
-    listActiveMembershipsForUser(profile.id),
-    countOwnedClubs(profile.id),
-  ]);
-  const drops = (await Promise.all(clubs.map((club) => getClubDrops(club.id)))).flat();
+  const {
+    clubs,
+    notifications,
+    memberships: activeMemberships,
+    scheduledDrops: drops,
+    assignedUsers,
+    ownedClubCount: ownedCount,
+  } = await getDashboardSnapshot(profile.id);
   const assignment = drops.find((drop) => drop.assignedUserId === profile.id && drop.status === "scheduled") ?? drops.find((drop) => drop.status === "scheduled");
   const assignmentClub = clubs.find((club) => club.id === assignment?.clubId) ?? clubs[0];
   const assignmentPlaylist = assignment && canViewDropContent(assignment, profile.id)
@@ -49,7 +45,9 @@ export default async function DashboardPage() {
   const membershipsByClubId = new Map(
     activeMemberships.map((item) => [item.clubId, item]),
   );
-  const assignedUser = assignment ? await getUserProfile(assignment.assignedUserId) : null;
+  const assignedUser = assignment
+    ? assignedUsers.find((user) => user.id === assignment.assignedUserId) ?? null
+    : null;
   const assignmentTheme = assignmentClub?.currentTheme;
   const dashboardTimezone = assignmentClub?.schedule.timezone ?? "America/Chicago";
   const dashboardDate = formatWeekdayDate(nowIso, dashboardTimezone) ?? "Today";

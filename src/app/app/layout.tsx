@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { AppNav } from "@/components/app-nav";
 import { BrowserNotificationRegistration } from "@/components/browser-notifications";
 import { MobileAppHeader } from "@/components/mobile-app-header";
+import { NavigationBlockerProvider } from "@/components/navigation-blocker";
 import { SkinProfileSync } from "@/components/skin-provider";
 import { TemporaryNameNotice } from "@/components/temporary-name-notice";
 import { ThemeProfileSync } from "@/components/theme-provider";
@@ -23,6 +24,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
   const defaultSidebarOpen = sidebarCookie !== "false";
 
   return (
+    <NavigationBlockerProvider>
     <SidebarProvider className="app-shell" defaultOpen={defaultSidebarOpen}>
       <ThemeProfileSync preference={viewer.profile.themePreference} enabled={!viewer.isDemo} />
       <SkinProfileSync preference={viewer.profile.skinPreference} enabled={!viewer.isDemo} />
@@ -51,5 +53,6 @@ export default async function ApplicationLayout({ children }: { children: ReactN
         </div>
       </main>
     </SidebarProvider>
+    </NavigationBlockerProvider>
   );
 }

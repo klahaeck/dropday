@@ -38,6 +38,13 @@ export interface ClubSchedulePreview {
   warning?: string;
 }
 
+type ScheduleDispatchState = {
+  status: "idle" | "pending" | "processing" | "delivered" | "failed";
+  attempts: number;
+  retryable: boolean;
+  warning?: string;
+};
+
 function reminderLabel(offset: number) {
   return DROP_REMINDER_OPTIONS.find((option) => option.minutes === offset)?.label
     ?? `${offset.toLocaleString()} minutes before`;
@@ -79,9 +86,11 @@ export function SchedulePreviewDetails({
 export function ClubScheduleForm({
   clubSlug,
   schedule,
+  initialDispatchState,
 }: {
   clubSlug: string;
   schedule: RecurrenceConfig;
+  initialDispatchState?: ScheduleDispatchState;
 }) {
   const [baseline, setBaseline] = useState(schedule);
   const [startsOn, setStartsOn] = useState(schedule.startsOn);
@@ -93,12 +102,42 @@ export function ClubScheduleForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>();
   const [notice, setNotice] = useState<string>();
+  const [dispatchState, setDispatchState] = useState<ScheduleDispatchState | undefined>(initialDispatchState);
+  const [retryingDispatch, setRetryingDispatch] = useState(false);
   const nextReminderId = useRef(MAX_DROP_REMINDERS);
   const [reminders, setReminders] = useState<Array<{ id: number; offset: DropReminderOffset | "" }>>(
     () => normalizeDropReminderOffsets(schedule.reminderOffsetsMinutes)
       .map((offset, index) => ({ id: index, offset })),
   );
   const router = useRouter();
+
+  async function refreshDispatchState() {
+    const response = await fetch(`/api/clubs/${encodeURIComponent(clubSlug)}/schedule`);
+    if (!response.ok) return;
+    setDispatchState(await response.json() as ScheduleDispatchState);
+  }
+
+  async function retryDispatch() {
+    setRetryingDispatch(true);
+    setMessage(undefined);
+    try {
+      const response = await fetch(`/api/clubs/${encodeURIComponent(clubSlug)}/schedule`, {
+        method: "PUT",
+      });
+      const result = await response.json() as ScheduleDispatchState & { error?: string };
+      if (!response.ok) {
+        setMessage(result.error ?? "Could not retry drop task scheduling.");
+        return;
+      }
+      setDispatchState(result);
+      setNotice(result.warning ?? "Drop task scheduling was queued for retry.");
+      window.setTimeout(() => void refreshDispatchState(), 1_500);
+    } catch {
+      setMessage("Could not retry drop task scheduling. Check your connection and try again.");
+    } finally {
+      setRetryingDispatch(false);
+    }
+  }
 
   function addReminder() {
     setReminders((current) => [...current, { id: nextReminderId.current++, offset: "" }]);
@@ -186,8 +225,9 @@ export function ClubScheduleForm({
       }
       setBaseline(result.schedule);
       setNotice(result.warning
-        ? `${result.warning} Review the active drop; adjust and save the schedule again to retry task setup.`
+        ? result.warning
         : "Schedule saved.");
+      void refreshDispatchState();
       router.refresh();
     } catch {
       setLoading(false);
@@ -199,6 +239,7 @@ export function ClubScheduleForm({
   const intervalNumber = Number(interval);
   return <>
     <form className="form-shell club-schedule-form" onSubmit={requestPreview}>
+      {dispatchState && dispatchState.status !== "delivered" && <section className="form-section" aria-live="polite"><span className="section-kicker">Automation status</span><h2>{dispatchState.status === "failed" ? "Drop tasks need attention" : "Drop tasks are pending"}</h2><p>{dispatchState.status === "failed" ? "The last scheduling attempt did not complete. Automatic retries remain active." : "The schedule is saved. Drop processing and reminders are still being registered in the background."}</p>{dispatchState.retryable && <button type="button" className="button button-ghost button-small" disabled={retryingDispatch} onClick={retryDispatch}>{retryingDispatch ? "Queuing retry…" : "Retry task scheduling"}</button>}</section>}
       <section className="form-section" id="schedule"><span className="section-kicker">Schedule</span><h2>Drop ritual</h2><p>Preview cadence and reminder consequences before changing the active drop.</p><div className="form-grid"><div className="field"><label htmlFor="schedule-starts-on">Start date</label><input id="schedule-starts-on" type="date" required value={startsOn} onChange={(event) => setStartsOn(event.target.value)} /></div><div className="field"><label htmlFor="schedule-local-time">Start time</label><input id="schedule-local-time" type="time" required value={localTime} onChange={(event) => setLocalTime(event.target.value)} /></div><div className="field"><label htmlFor="schedule-timezone">Timezone</label><TimezoneField id="schedule-timezone" value={timezone} onValueChange={setTimezone} /></div><div className="field ritual-repeat-field"><label htmlFor="schedule-interval" id="schedule-repeat-label">Repeat</label><div className="ritual-repeat-row" role="group" aria-labelledby="schedule-repeat-label"><span>Every</span><input id="schedule-interval" type="number" min="1" max="52" required aria-label="Repeat interval" value={interval} onChange={(event) => setInterval(event.target.value)} /><select aria-label="Repeat unit" value={frequency} onChange={(event) => setFrequency(event.target.value as RecurrenceConfig["frequency"])}><option value="daily">{intervalNumber === 1 ? "day" : "days"}</option><option value="weekly">{intervalNumber === 1 ? "week" : "weeks"}</option><option value="monthly">{intervalNumber === 1 ? "month" : "months"}</option></select></div></div></div></section>
       <section className="form-section"><span className="section-kicker">Notifications</span><h2>Next drop reminders</h2><div className="drop-reminder-list">{reminders.length === 0 && <p className="drop-reminder-empty">No reminders set. Add one when you want Dropday to contact the assigned member.</p>}{reminders.map((selection, index) => <div className="drop-reminder-row" key={selection.id}><div className="field"><label htmlFor={`schedule-reminder-${selection.id}`}>Reminder {index + 1}</label><select id={`schedule-reminder-${selection.id}`} value={selection.offset} onChange={(event) => updateReminder(selection.id, event.target.value)} required><option value="" disabled>Choose a reminder time</option>{DROP_REMINDER_OPTIONS.map((option) => <option value={option.minutes} key={option.minutes} disabled={reminders.some((other) => other.id !== selection.id && other.offset !== "" && getDropReminderFrequency(other.offset) === option.frequency)}>{option.label}</option>)}</select></div><button type="button" className="button button-ghost button-small drop-reminder-remove" aria-label={`Remove reminder ${index + 1}`} onClick={() => setReminders((current) => current.filter((item) => item.id !== selection.id))}><Trash2 size={15} /></button></div>)}<div className="drop-reminder-actions"><button type="button" className="button button-ghost button-small" onClick={addReminder} disabled={reminders.length >= MAX_DROP_REMINDERS || reminders.some((item) => item.offset === "")}><Plus size={15} /> Add reminder</button><span className="form-note">Add at most one weekly, daily, and hourly reminder.</span></div></div></section>
       {message && <p className="form-note form-error" role="alert">{message}</p>}

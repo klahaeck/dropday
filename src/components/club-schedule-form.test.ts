@@ -49,6 +49,17 @@ describe("ClubScheduleForm", () => {
     expect(html).toContain('value="America/Chicago"');
   });
 
+  it("shows truthful failed automation state with an idempotent retry action", () => {
+    const html = renderToStaticMarkup(createElement(ClubScheduleForm, {
+      clubSlug: "needle-exchange",
+      schedule,
+      initialDispatchState: { status: "failed", attempts: 2, retryable: true },
+    }));
+    expect(html).toContain("Drop tasks need attention");
+    expect(html).toContain("Automatic retries remain active");
+    expect(html).toContain("Retry task scheduling");
+  });
+
   it("renders timing, assignee, and reminder consequences", () => {
     const html = renderToStaticMarkup(createElement(SchedulePreviewDetails, { preview, currentTimezone: schedule.timezone }));
     expect(html).toContain("Alex Listener");

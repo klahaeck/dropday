@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_DROP_REMINDER_OFFSETS } from "@/lib/drop-reminder-settings";
 import type { DropSlot } from "@/types/domain";
 
-const trigger = vi.hoisted(() => vi.fn());
+const { trigger, integrations } = vi.hoisted(() => ({
+  trigger: vi.fn(),
+  integrations: { trigger: true, mongo: true },
+}));
 
 vi.mock("@trigger.dev/sdk", () => ({ tasks: { trigger } }));
-vi.mock("@/lib/env", () => ({ integrations: { trigger: true } }));
+vi.mock("@/lib/env", () => ({ integrations }));
 
-import { scheduleDropTasks } from "@/lib/scheduler";
+import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
 
 const drop: DropSlot = {
   id: "drop-1",
@@ -23,6 +26,8 @@ const drop: DropSlot = {
 
 describe("drop task scheduling", () => {
   beforeEach(() => {
+    integrations.trigger = true;
+    integrations.mongo = true;
     trigger.mockReset();
     trigger
       .mockResolvedValueOnce({ id: "process-run" })
@@ -74,5 +79,23 @@ describe("drop task scheduling", () => {
       { dropId: drop.id, scheduleVersion: drop.scheduleVersion, offsetMinutes: 1_440 },
       { dropId: drop.id, scheduleVersion: drop.scheduleVersion, offsetMinutes: 180 },
     ]);
+  });
+
+  it("fails closed when persistent work cannot be submitted to Trigger.dev", async () => {
+    integrations.trigger = false;
+
+    await expect(scheduleDropTasks(drop, DEFAULT_DROP_REMINDER_OFFSETS))
+      .rejects.toThrow("Trigger.dev is required to schedule persistent drops");
+    await expect(dispatchOutbox("outbox-1", "drop-schedule:drop-1"))
+      .rejects.toThrow("Trigger.dev is required to dispatch persistent outbox work");
+    expect(trigger).not.toHaveBeenCalled();
+  });
+
+  it("keeps no-op scheduling available outside persistent Mongo mode", async () => {
+    integrations.trigger = false;
+    integrations.mongo = false;
+
+    await expect(scheduleDropTasks(drop, DEFAULT_DROP_REMINDER_OFFSETS)).resolves.toEqual([]);
+    await expect(dispatchOutbox("outbox-1", "drop-schedule:drop-1")).resolves.toBeUndefined();
   });
 });

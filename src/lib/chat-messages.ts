@@ -1,5 +1,18 @@
 import type { ChatMessage } from "@/types/domain";
 
+function compareChatMessages(left: ChatMessage, right: ChatMessage): number {
+  return left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+}
+
+export function mergeChatMessages(
+  current: ChatMessage[],
+  incoming: ChatMessage[],
+): ChatMessage[] {
+  const byId = new Map(current.map((message) => [message.id, message]));
+  for (const message of incoming) byId.set(message.id, message);
+  return [...byId.values()].sort(compareChatMessages);
+}
+
 export function reconcileSentMessage(
   messages: ChatMessage[],
   optimisticMessageId: string,

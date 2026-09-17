@@ -10,20 +10,63 @@ import { chatNotificationPreview, resolveMentionedUserIds } from "@/lib/chat-men
 import { canViewDropContent } from "@/lib/drop-visibility";
 import { env, integrations } from "@/lib/env";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { reportOperationalError } from "@/lib/observability";
 import {
   createId,
   getUsersByIds,
+  InvalidMessageCursorError,
   insertMessage,
+  listMessagesPage,
 } from "@/lib/repository";
 import type { ChatMessage, Notification } from "@/types/domain";
 
 const schema = z.object({
   threadType: z.enum(["club", "drop"]),
   threadId: z.string().min(1).max(120),
-  clientMessageId: z.string().uuid().optional(),
+  clientMessageId: z.string().uuid(),
   mentionedUserIds: z.array(z.string().min(1).max(120)).max(100).optional(),
   body: z.string().trim().min(1).max(1000),
 });
+
+const historySchema = z.object({
+  threadType: z.enum(["club", "drop"]),
+  threadId: z.string().min(1).max(120),
+  before: z.string().min(1).max(500).optional(),
+  after: z.string().min(1).max(500).optional(),
+}).refine((value) => !(value.before && value.after));
+
+export async function GET(request: Request) {
+  const { profile, features } = await requireViewer();
+  const url = new URL(request.url);
+  const parsed = historySchema.safeParse({
+    threadType: url.searchParams.get("threadType"),
+    threadId: url.searchParams.get("threadId"),
+    before: url.searchParams.get("before") ?? undefined,
+    after: url.searchParams.get("after") ?? undefined,
+  });
+  if (!parsed.success) return NextResponse.json({ error: "Invalid message history request" }, { status: 400 });
+  try {
+    await authorizeChatThread({
+      threadType: parsed.data.threadType,
+      threadId: parsed.data.threadId,
+      viewerUserId: profile.id,
+      clubChatEnabled: features.clubChat,
+    });
+    const page = await listMessagesPage(parsed.data.threadType, parsed.data.threadId, {
+      before: parsed.data.before,
+      after: parsed.data.after,
+    });
+    return NextResponse.json(page);
+  } catch (error) {
+    if (error instanceof ChatAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof InvalidMessageCursorError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
+}
 
 export async function POST(request: Request) {
   const { profile, features } = await requireViewer();
@@ -57,6 +100,7 @@ export async function POST(request: Request) {
   const message: ChatMessage = {
     id: createId("message"), threadType: parsed.data.threadType, threadId: parsed.data.threadId,
     authorId: profile.id, authorName: profile.displayName, authorInitials: profile.initials,
+    clientMessageId: parsed.data.clientMessageId,
     body: parsed.data.body, mentionedUserIds, reactions: [], reactionRevision: 0, createdAt: timestamp,
   };
   const chatLabel = parsed.data.threadType === "club" ? "club chat" : "drop chat";
@@ -72,17 +116,21 @@ export async function POST(request: Request) {
     href,
     createdAt: timestamp,
   }));
-  await insertMessage(message, notifications);
-  if (integrations.ably && env.ablyApiKey) {
+  const stored = await insertMessage(message, notifications);
+  if (stored.created && integrations.ably && env.ablyApiKey) {
     const ably = new Rest({ key: env.ablyApiKey });
     try {
       await ably.channels.get(`${parsed.data.threadType}:${parsed.data.threadId}`).publish("message", {
-        ...message,
-        clientMessageId: parsed.data.clientMessageId,
+        ...stored.message,
       });
-    } catch {
+    } catch (error) {
       // The stored message remains successful even if realtime delivery is interrupted.
+      reportOperationalError("chat.realtime.publish", error, {
+        messageId: stored.message.id,
+        threadType: parsed.data.threadType,
+        threadId: parsed.data.threadId,
+      });
     }
   }
-  return NextResponse.json({ message }, { status: 201 });
+  return NextResponse.json({ message: stored.message }, { status: stored.created ? 201 : 200 });
 }

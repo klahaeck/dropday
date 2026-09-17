@@ -10,12 +10,15 @@ import {
 } from "@/lib/club-description";
 import { CLUB_ACCENT_PATTERN, DEFAULT_CLUB_ACCENT } from "@/lib/club-accent";
 import { getDb, getMongoClient } from "@/lib/db";
+import { assertOwnershipCapacity, EntitlementCapacityError } from "@/lib/entitlement-capacity";
 import { getOwnershipEntitlement } from "@/lib/entitlements";
 import { integrations } from "@/lib/env";
 import { DEFAULT_DROP_REMINDER_OFFSETS } from "@/lib/drop-reminder-settings";
 import { createAnchoredRecurrence, nextOccurrences, occurrenceKey } from "@/lib/scheduling";
 import { countOwnedClubs, createId } from "@/lib/repository";
-import { scheduleDropTasks } from "@/lib/scheduler";
+import { enqueueDropScheduleOutbox, type DurableOutboxEvent } from "@/lib/outbox";
+import { reportOperationalError } from "@/lib/observability";
+import { dispatchOutbox } from "@/lib/scheduler";
 import { THEME_DESCRIPTION_MAX_LENGTH } from "@/lib/theme-description";
 import { isValidTimeZone } from "@/lib/timezones";
 import type { Club, ClubMembership, DropSlot } from "@/types/domain";
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
   }
 
   let committed = false;
+  let scheduleOutbox: DurableOutboxEvent | undefined;
   try {
   const db = await getDb();
   const client = await getMongoClient();
@@ -112,23 +116,44 @@ export async function POST(request: Request) {
   } : undefined;
 
   await client.withSession(async (session) => session.withTransaction(async () => {
+    await assertOwnershipCapacity({
+      db,
+      session,
+      userId: profile.id,
+      timestamp,
+    });
     await db.collection<Club>("clubs").insertOne(club, { session });
     await db.collection<ClubMembership>("memberships").insertOne(membership, { session });
-    if (drop) await db.collection<DropSlot>("drops").insertOne(drop, { session });
+    if (drop) {
+      await db.collection<DropSlot>("drops").insertOne(drop, { session });
+      scheduleOutbox = await enqueueDropScheduleOutbox({
+        db,
+        session,
+        drop,
+        reminderOffsetsMinutes: schedule.reminderOffsetsMinutes,
+        timestamp,
+      });
+    }
   }));
   committed = true;
   let schedulingWarning: string | undefined;
-  if (drop) {
+  if (scheduleOutbox) {
     try {
-      const runIds = await scheduleDropTasks(drop, schedule.reminderOffsetsMinutes);
-      if (runIds.length) await db.collection<DropSlot>("drops").updateOne({ id: drop.id }, { $set: { triggerRunIds: runIds } });
-    } catch {
-      schedulingWarning = "The club was created, but its first drop tasks still need to be scheduled.";
+      await dispatchOutbox(scheduleOutbox.id, scheduleOutbox.idempotencyKey);
+    } catch (error) {
+      reportOperationalError("club.first-drop-dispatch", error, {
+        clubId: id,
+        outboxId: scheduleOutbox.id,
+      });
+      schedulingWarning = "The club was created and its first drop was queued for automatic scheduling.";
     }
   }
   return NextResponse.json({ club, slug, warning: schedulingWarning }, { status: 201 });
-  } catch {
+  } catch (error) {
     if (!committed) await Promise.all(uploadedArtwork.map(discardArtwork));
+    if (error instanceof EntitlementCapacityError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: "Could not create this club." }, { status: 500 });
   }
 }

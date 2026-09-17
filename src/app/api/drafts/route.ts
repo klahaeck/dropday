@@ -4,7 +4,8 @@ import { requireViewer } from "@/lib/auth";
 import { discardArtwork, isOwnedArtworkUrl } from "@/lib/blob-artwork";
 import { integrations } from "@/lib/env";
 import { firstPlaylistDraftError, validatePlaylistDraft } from "@/lib/playlist-draft-validation";
-import { resolvePlaylist } from "@/lib/playlist-providers";
+import { PlaylistValidationError, resolvePlaylist } from "@/lib/playlist-providers";
+import { reportOperationalError } from "@/lib/observability";
 import { createId, insertDraft } from "@/lib/repository";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import type { PlaylistDraft, PlaylistMetadata } from "@/types/domain";
@@ -28,7 +29,13 @@ export async function POST(request: Request) {
   if (!features.playlistLibrary) {
     return NextResponse.json({ error: "Your current plan does not include the playlist library." }, { status: 403 });
   }
-  const parsed = schema.safeParse(await request.json());
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid playlist request." }, { status: 400 });
+  }
+  const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid playlist" }, { status: 400 });
   if (parsed.data.artworkUrl && !isOwnedArtworkUrl(parsed.data.artworkUrl, "playlist", profile.id)) {
     return NextResponse.json({ error: "This playlist artwork does not belong to your account." }, { status: 403 });
@@ -40,7 +47,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: issue?.error ?? "Invalid playlist", field: issue?.field }, { status: 400 });
   }
   const { description, descriptionHtml } = validation.data;
-  if (!(await consumeRateLimit(`draft:${profile.id}`, 12, 60))) {
+  let rateLimitAllowed: boolean;
+  try {
+    rateLimitAllowed = await consumeRateLimit(`draft:${profile.id}`, 12, 60);
+  } catch (error) {
+    await discardArtwork(parsed.data.artworkUrl);
+    reportOperationalError("playlist-draft.rate-limit", error, { userId: profile.id, operation: "create" });
+    return NextResponse.json({ error: "Could not save this playlist. Try again." }, { status: 503 });
+  }
+  if (!rateLimitAllowed) {
     await discardArtwork(parsed.data.artworkUrl);
     return NextResponse.json({ error: "Too many drafts. Try again in a minute." }, { status: 429 });
   }
@@ -55,7 +70,7 @@ export async function POST(request: Request) {
       if (expectedProvider && resolved.provider !== expectedProvider) {
         const providerName = expectedProvider === "spotify" ? "Spotify" : "Apple Music";
         const article = expectedProvider === "spotify" ? "a" : "an";
-        throw new Error(`Use ${article} ${providerName} playlist URL in the ${providerName} field.`);
+        throw new PlaylistValidationError(`Use ${article} ${providerName} playlist URL in the ${providerName} field.`);
       }
       return resolved;
     }));
@@ -63,7 +78,7 @@ export async function POST(request: Request) {
       resolvedVersions.findIndex((candidate) => candidate.provider === version.provider) === index
     );
     const primary = versions.find((version) => version.provider === "spotify") ?? versions[0];
-    if (!primary) throw new Error("Add a Spotify or Apple Music playlist URL");
+    if (!primary) throw new PlaylistValidationError("Add a Spotify or Apple Music playlist URL");
     const metadataSource = versions.find((version) => version.metadata.artworkUrl || version.metadata.providerTitle);
     const metadata: PlaylistMetadata = metadataSource?.metadata ?? {};
     const timestamp = new Date().toISOString();
@@ -82,9 +97,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ draft, warning: warnings[0], demo: !integrations.mongo }, { status: 201 });
   } catch (error) {
     await discardArtwork(parsed.data.artworkUrl);
-    const message = error instanceof Error ? error.message : "Invalid playlist URL";
-    const field = requestedFieldFromProviderError(message);
-    return NextResponse.json({ error: message, field }, { status: 400 });
+    if (error instanceof PlaylistValidationError) {
+      const field = requestedFieldFromProviderError(error.message);
+      return NextResponse.json({ error: error.message, field }, { status: 400 });
+    }
+    reportOperationalError("playlist-draft.create", error, { userId: profile.id });
+    return NextResponse.json({ error: "Could not save this playlist. Try again." }, { status: 503 });
   }
 }
 

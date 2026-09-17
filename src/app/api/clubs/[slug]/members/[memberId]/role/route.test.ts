@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   integrations: { mongo: false },
   getDb: vi.fn(),
   getMongoClient: vi.fn(),
+  assertOwnershipCapacity: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -26,6 +27,11 @@ vi.mock("@/lib/env", () => ({
 vi.mock("@/lib/db", () => ({
   getDb: mocks.getDb,
   getMongoClient: mocks.getMongoClient,
+}));
+
+vi.mock("@/lib/entitlement-capacity", () => ({
+  assertOwnershipCapacity: mocks.assertOwnershipCapacity,
+  EntitlementCapacityError: class EntitlementCapacityError extends Error {},
 }));
 
 vi.mock("@/lib/browser-push", () => ({

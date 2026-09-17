@@ -121,6 +121,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       lang="en"
       className={`${displayFont.variable} ${monoFont.variable}`}
       data-skin={DEFAULT_SKIN}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head><script dangerouslySetInnerHTML={{ __html: appearanceBootScript }} /></head>

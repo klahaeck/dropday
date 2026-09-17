@@ -7,10 +7,15 @@ import { CopyJoinLink } from "@/components/copy-join-link";
 import { ClubSettingsForm } from "@/components/interactive-forms";
 import { requireViewer } from "@/lib/auth";
 import { normalizeClubAccent } from "@/lib/club-accent";
+import { getActiveClubInvitation } from "@/lib/club-invitations";
 import { canUseClubManagement } from "@/lib/club-management";
+import { getDb } from "@/lib/db";
+import { integrations } from "@/lib/env";
+import { getDropScheduleDispatchState } from "@/lib/outbox";
 import {
   getClubBySlug,
   getClubMemberships,
+  getDropById,
 } from "@/lib/repository";
 
 export default async function ClubSettingsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -25,15 +30,22 @@ export default async function ClubSettingsPage({ params }: { params: Promise<{ s
     viewerMembership,
     features.clubAdminTools && features.customSchedules,
   )) redirect("/pricing");
+  const [activeInvitation, activeDrop] = await Promise.all([
+    club.visibility === "private" ? getActiveClubInvitation(club.id) : null,
+    club.activeDropId ? getDropById(club.activeDropId) : null,
+  ]);
+  const scheduleDispatchState = integrations.mongo
+    ? await getDropScheduleDispatchState(await getDb(), activeDrop)
+    : { status: "delivered" as const, attempts: 0, retryable: false };
   return <>
     <div className="page-actions" style={{ marginBottom: 22 }}><Link href={`/app/clubs/${club.slug}`} className="button button-ghost button-small"><ArrowLeft size={14} /> Back to {club.name}</Link></div>
     <header className="page-header club-admin-header"><div><span className="section-kicker">Club administration</span><h1>Manage {club.name}</h1><p>Update the club’s details, themes, schedule, access, and member rotation.</p></div></header>
     <ClubAdminTabs clubSlug={club.slug} active="settings" memberCount={memberships.length} />
     <div className="dashboard-grid club-admin-settings-grid">
       <ClubSettingsForm clubSlug={club.slug} clubName={club.name} clubDescription={club.description} clubDescriptionHtml={club.descriptionHtml} clubVisibility={club.visibility} ownerId={profile.id} clubImageUrl={club.imageUrl} clubAccent={normalizeClubAccent(club.accent)} />
-      <aside><section className="panel"><span className="section-kicker">Private access</span><h2>Shareable join link</h2><p>Revocable links expose only the club preview and request form.</p><CopyJoinLink clubSlug={club.slug} /></section><section className="panel" style={{ marginTop: 16 }}><ShieldCheck /><h2>Ownership</h2><p>Eligible owners can add paid members with available capacity as co-owners or transfer ownership from the Members tab.</p></section></aside>
+      <aside>{club.visibility === "private" && <section className="panel"><span className="section-kicker">Private access</span><h2>Shareable join link</h2><p>Each link expires after 14 days. Replacing or revoking it immediately invalidates the previous secret.</p><CopyJoinLink clubSlug={club.slug} initialExpiresAt={activeInvitation?.expiresAt} /></section>}<section className="panel" style={{ marginTop: club.visibility === "private" ? 16 : 0 }}><ShieldCheck /><h2>Ownership</h2><p>Eligible owners can add paid members with available capacity as co-owners or transfer ownership from the Members tab.</p></section></aside>
     </div>
     <div className="section-title-row"><h2>Schedule and reminders</h2></div>
-    <ClubScheduleForm clubSlug={club.slug} schedule={club.schedule} />
+    <ClubScheduleForm clubSlug={club.slug} schedule={club.schedule} initialDispatchState={scheduleDispatchState} />
   </>;
 }

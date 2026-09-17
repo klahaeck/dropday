@@ -883,7 +883,6 @@ html:is(:not([data-skin]), [data-skin="classic"]) { scroll-behavior: smooth; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker summary { list-style: none; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker[open] { display: flex; align-items: center; gap: 3px; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .reaction-picker[open] > span { display: flex; gap: 3px; }
-:root:is(:not([data-skin]), [data-skin="classic"]) .typing-line { min-height: 24px; padding: 2px 20px; color: var(--muted); font-size: 10px; font-style: italic; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-composer { position: relative; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-composer input { padding: 11px 13px; color: var(--ink); caret-color: var(--ink); border: 1px solid var(--line); border-radius: 8px; background: var(--paper); outline: none; }
 :root:is(:not([data-skin]), [data-skin="classic"]) .chat-composer input::placeholder { color: var(--muted); opacity: 1; }

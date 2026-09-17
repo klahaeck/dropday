@@ -3,13 +3,13 @@ import { clubJoinUrl, copyTextToClipboard } from "@/lib/clipboard";
 
 describe("clubJoinUrl", () => {
   it("builds an absolute URL to the club preview", () => {
-    expect(clubJoinUrl("https://dropday.example", "needle-exchange"))
-      .toBe("https://dropday.example/app/clubs/needle-exchange");
+    expect(clubJoinUrl("https://dropday.example", "needle-exchange", "invitation_1.secret"))
+      .toBe("https://dropday.example/app/clubs/needle-exchange/invite#invitation_1.secret");
   });
 
   it("safely encodes the slug", () => {
-    expect(clubJoinUrl("https://dropday.example/admin", "invite only"))
-      .toBe("https://dropday.example/app/clubs/invite%20only");
+    expect(clubJoinUrl("https://dropday.example/admin", "invite only", "token with spaces"))
+      .toBe("https://dropday.example/app/clubs/invite%20only/invite#token%20with%20spaces");
   });
 });
 

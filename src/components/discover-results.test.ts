@@ -59,4 +59,17 @@ describe("DiscoverResults", () => {
     expect(singular).toContain("1 public club matching");
     expect(plural).toContain("2 public clubs");
   });
+
+  it("keeps the normalized query while paging results", () => {
+    const html = renderToStaticMarkup(createElement(DiscoverResults, {
+      clubs: [club],
+      query: "night shift",
+      page: 2,
+      hasNext: true,
+    }));
+
+    expect(html).toContain("on page 2");
+    expect(html).toContain('href="/app/discover?q=night+shift"');
+    expect(html).toContain('href="/app/discover?q=night+shift&amp;page=3"');
+  });
 });

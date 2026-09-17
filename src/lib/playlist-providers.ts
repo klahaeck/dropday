@@ -1,5 +1,12 @@
 import type { PlaylistProvider, PlaylistMetadata, PlaylistVersion } from "@/types/domain";
 
+export class PlaylistValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PlaylistValidationError";
+  }
+}
+
 export interface NormalizedPlaylist {
   provider: PlaylistProvider;
   providerPlaylistId: string;
@@ -24,7 +31,7 @@ const spotifyAdapter: PlaylistProviderAdapter = {
   matches: (url) => url.hostname === "open.spotify.com" && url.pathname.startsWith("/playlist/"),
   normalize(url) {
     const id = url.pathname.split("/").filter(Boolean)[1];
-    if (!id || !/^[A-Za-z0-9]+$/.test(id)) throw new Error("Invalid Spotify playlist URL");
+    if (!id || !/^[A-Za-z0-9]+$/.test(id)) throw new PlaylistValidationError("Invalid Spotify playlist URL");
     return {
       provider: "spotify",
       providerPlaylistId: id,
@@ -49,7 +56,7 @@ const appleMusicAdapter: PlaylistProviderAdapter = {
     url.pathname.includes("/playlist/"),
   normalize(url) {
     const id = url.searchParams.get("i") ?? url.pathname.split("/").filter(Boolean).at(-1);
-    if (!id || !/^[A-Za-z0-9.-]+$/.test(id)) throw new Error("Invalid Apple Music playlist URL");
+    if (!id || !/^[A-Za-z0-9.-]+$/.test(id)) throw new PlaylistValidationError("Invalid Apple Music playlist URL");
     const path = url.pathname.replace(/^\/(?:embed\/)?/, "/");
     const canonicalUrl = `https://music.apple.com${path}`;
     return {
@@ -79,11 +86,11 @@ export function normalizePlaylistUrl(input: string): NormalizedPlaylist {
   try {
     url = new URL(input);
   } catch {
-    throw new Error("Enter a complete Spotify or Apple Music playlist URL");
+    throw new PlaylistValidationError("Enter a complete Spotify or Apple Music playlist URL");
   }
-  if (url.protocol !== "https:") throw new Error("Playlist links must use HTTPS");
+  if (url.protocol !== "https:") throw new PlaylistValidationError("Playlist links must use HTTPS");
   const adapter = playlistAdapters.find((candidate) => candidate.matches(url));
-  if (!adapter) throw new Error("Only Spotify and Apple Music playlist links are supported");
+  if (!adapter) throw new PlaylistValidationError("Only Spotify and Apple Music playlist links are supported");
   return adapter.normalize(url);
 }
 

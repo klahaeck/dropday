@@ -1,5 +1,6 @@
 import type { ClientSession, Db } from "mongodb";
 import { nextActiveMember, preserveTurn, rotateQueue } from "@/lib/queue";
+import { enqueueDropScheduleOutbox } from "@/lib/outbox";
 import { createId } from "@/lib/repository";
 import { nextOccurrences, occurrenceKey } from "@/lib/scheduling";
 import type {
@@ -150,10 +151,21 @@ export async function publishDropInTransaction({
   };
   await db.collection<OutboxEvent>("outbox").insertOne(outbox, { session });
 
+  const scheduleOutbox = nextDrop
+    ? await enqueueDropScheduleOutbox({
+        db,
+        session,
+        drop: nextDrop,
+        reminderOffsetsMinutes: club.schedule.reminderOffsetsMinutes,
+        timestamp,
+      })
+    : undefined;
+
   return {
     publishedDrop,
     nextDrop,
     outbox,
+    scheduleOutbox,
     rotationMemberIds,
   };
 }

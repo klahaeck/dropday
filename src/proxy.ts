@@ -1,16 +1,22 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
-import { env } from "@/lib/env";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { env, integrations } from "@/lib/env";
 import {
   CLERK_FRONTEND_API_PROXY_PATH,
   shouldProxyClerkFrontendApi,
 } from "@/lib/clerk-proxy";
 
-export default clerkMiddleware({
+const clerkProxy = clerkMiddleware({
   frontendApiProxy: {
     enabled: shouldProxyClerkFrontendApi(env.clerkPublishableKey),
     path: CLERK_FRONTEND_API_PROXY_PATH,
   },
 });
+
+export default function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (!integrations.clerk) return NextResponse.next();
+  return clerkProxy(request, event);
+}
 
 export const config = {
   matcher: [
