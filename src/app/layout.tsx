@@ -25,6 +25,9 @@ import "./skin-seventies.css";
 import "./skin-eighties.css";
 import "./skin-metal.css";
 import "./skin-rap.css";
+// App geometry is shared by every skin and intentionally loads last so a skin
+// can focus on visual treatment without re-owning responsive behavior.
+import "./app-structure.css";
 
 // Only opt-in skins render text in these families, so they are not preloaded:
 // visitors on the default design would otherwise fetch faces they never use.

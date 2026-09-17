@@ -14,6 +14,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { publishUnreadNotificationCount } from "@/components/unread-notification-badge";
+import { AppEmptyState } from "@/components/app-empty-states";
 import { formatRelative } from "@/lib/format";
 import type { Notification } from "@/types/domain";
 
@@ -108,7 +109,7 @@ export function NotificationCenter({ initialNotifications }: { initialNotificati
       </button>
     </header>
     {error && <p className="form-error notification-error" role="alert">{error}</p>}
-    <div className="notification-list">
+    {initialNotifications.length ? <div className="notification-list">
       {initialNotifications.map((notification) => {
         const Icon = icons[notification.kind as keyof typeof icons] ?? Bell;
         const isRead = readIds.has(notification.id);
@@ -144,6 +145,6 @@ export function NotificationCenter({ initialNotifications }: { initialNotificati
           </div>
         </article>;
       })}
-    </div>
+    </div> : <AppEmptyState kind="notifications-empty" />}
   </>;
 }

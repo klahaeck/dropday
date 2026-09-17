@@ -8,7 +8,7 @@ import { ClubAccessRequests } from "@/components/club-access-requests";
 import { ClubDescription } from "@/components/club-description";
 import { DropAttachmentForm } from "@/components/drop-attachment-form";
 import { FreeformPanel } from "@/components/freeform-panel";
-import { JoinRequestButton } from "@/components/interactive-forms";
+import { JoinRequestButton } from "@/components/join-request-button";
 import { Pill } from "@/components/pill";
 import { ThemePanel } from "@/components/theme-panel";
 import { requireViewer } from "@/lib/auth";
@@ -49,7 +49,7 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
     const pendingRequest = await getPendingJoinRequest(club.id, profile.id);
     return <>
       <section className={`club-hero${club.imageUrl ? " club-hero-has-image" : ""}`} style={clubAccentStyle}>{club.imageUrl && <Image src={club.imageUrl} alt="" fill sizes="100vw" className="club-hero-artwork" unoptimized />}<div className="club-hero-content"><Pill tone={club.visibility === "private" ? "dark" : "green"}>{club.visibility === "private" ? <LockKeyhole size={12} /> : null}{club.visibility}</Pill><h1>{club.name}</h1><ClubDescription html={club.descriptionHtml} fallback={club.description} className="club-hero-description" /><div className="club-hero-meta"><span><Users size={17} /> {club.memberCount} members</span><span><CalendarClock size={17} /> {scheduleLabel(club.schedule.rrule, club.schedule.localTime)}</span></div></div></section>
-      <div className="dashboard-grid" style={{ marginTop: 18 }}>{club.currentTheme ? <ThemePanel theme={club.currentTheme} clubAccent={accent} showVersion={false} /> : <FreeformPanel />}<section className="panel"><span className="section-kicker">Members only beyond this point</span><h2>Ask to join the rotation.</h2><p>Playlists, the complete queue, and both chat rooms become visible when an admin approves you.</p><JoinRequestButton clubId={club.id} initialRequested={Boolean(pendingRequest)} /></section></div>
+      <div className="dashboard-grid" style={{ marginTop: 18 }}>{club.currentTheme ? <ThemePanel theme={club.currentTheme} clubAccent={accent} showVersion={false} /> : <FreeformPanel />}<section className="panel"><span className="section-kicker">Members only beyond this point</span><h2>Ask to join the rotation.</h2><p>Playlists, the complete queue, and both chat rooms become visible when an admin approves you.</p><JoinRequestButton clubId={club.id} initialRequest={pendingRequest ? { id: pendingRequest.id, message: pendingRequest.message } : null} /></section></div>
     </>;
   }
 
@@ -110,6 +110,7 @@ export default async function ClubPage({ params }: { params: Promise<{ slug: str
                 scheduledLabel: activeDrop.status === "overdue"
                   ? `Overdue since ${formatDateTime(activeDrop.scheduledFor, club.schedule.timezone)}`
                   : formatDateTime(activeDrop.scheduledFor, club.schedule.timezone),
+                isLate: activeDrop.status === "overdue" || activeDrop.scheduledFor <= timestamp,
                 currentPlaylistTitle: activeDrop.playlist?.title,
                 currentPlaylistDraftId: activeDrop.playlist?.sourceDraftId,
               }]}

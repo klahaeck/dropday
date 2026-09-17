@@ -1,12 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   canManageJoinRequests,
   JoinRequestDecisionError,
   planJoinRequestApproval,
+  withdrawJoinRequest,
 } from "@/lib/join-request-service";
+import { demoJoinRequests } from "@/lib/demo-data";
+import { createOrGetPendingJoinRequest } from "@/lib/repository";
 import type { ClubMembership, JoinRequest, UserProfile } from "@/types/domain";
 
 const timestamp = "2026-07-17T18:00:00.000Z";
+const withdrawalRequestIds = new Set<string>();
+
+afterEach(() => {
+  for (let index = demoJoinRequests.length - 1; index >= 0; index -= 1) {
+    if (withdrawalRequestIds.has(demoJoinRequests[index].id)) {
+      demoJoinRequests.splice(index, 1);
+    }
+  }
+  withdrawalRequestIds.clear();
+});
 
 const request: JoinRequest = {
   id: "join-1",
@@ -130,5 +143,77 @@ describe("join-request decisions", () => {
       expect(error).toBeInstanceOf(JoinRequestDecisionError);
       expect(error).toMatchObject({ status: 409 });
     }
+  });
+});
+
+describe("join-request withdrawal", () => {
+  function addRequest(overrides: Partial<JoinRequest> = {}) {
+    const next: JoinRequest = {
+      id: `join-withdraw-${withdrawalRequestIds.size + 1}`,
+      clubId: "club-needle",
+      userId: "user-requester",
+      message: "Please let me join.",
+      status: "pending",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...overrides,
+    };
+    withdrawalRequestIds.add(next.id);
+    demoJoinRequests.push(next);
+    return next;
+  }
+
+  it("lets a requester withdraw their own pending request", async () => {
+    const pending = addRequest();
+
+    await expect(withdrawJoinRequest({
+      requestId: pending.id,
+      actorUserId: pending.userId,
+    })).resolves.toMatchObject({
+      request: { id: pending.id, status: "withdrawn" },
+      demo: true,
+    });
+  });
+
+  it("rejects another user and a non-pending or repeated withdrawal", async () => {
+    const pending = addRequest();
+    const handled = addRequest({ id: "join-withdraw-handled", status: "approved" });
+
+    await expect(withdrawJoinRequest({
+      requestId: pending.id,
+      actorUserId: "different-user",
+    })).rejects.toMatchObject({ status: 403 });
+    await expect(withdrawJoinRequest({
+      requestId: handled.id,
+      actorUserId: handled.userId,
+    })).rejects.toMatchObject({ status: 409 });
+    await withdrawJoinRequest({ requestId: pending.id, actorUserId: pending.userId });
+    await expect(withdrawJoinRequest({
+      requestId: pending.id,
+      actorUserId: pending.userId,
+    })).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("allows a new request with a message after withdrawal", async () => {
+    const pending = addRequest();
+    await withdrawJoinRequest({ requestId: pending.id, actorUserId: pending.userId });
+    const replacement: JoinRequest = {
+      ...pending,
+      id: "join-withdraw-replacement",
+      message: "A new note for the managers.",
+      status: "pending",
+    };
+    withdrawalRequestIds.add(replacement.id);
+
+    const result = await createOrGetPendingJoinRequest(replacement);
+
+    expect(result).toMatchObject({
+      created: true,
+      request: {
+        id: replacement.id,
+        message: "A new note for the managers.",
+        status: "pending",
+      },
+    });
   });
 });

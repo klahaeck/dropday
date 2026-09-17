@@ -29,6 +29,7 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
   if (!playlist) notFound();
 
   const versions = getPlaylistVersions(playlist);
+  const timestamp = new Date().toISOString();
   const dropsByClub = await Promise.all(clubs.map(async (club) => ({
     club,
     drops: await getClubDrops(club.id),
@@ -49,6 +50,7 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
       scheduledLabel: drop.status === "overdue"
         ? `Overdue since ${formatDateTime(drop.scheduledFor, club.schedule.timezone)}`
         : formatDateTime(drop.scheduledFor, club.schedule.timezone),
+      isLate: drop.status === "overdue" || drop.scheduledFor <= timestamp,
       currentPlaylistTitle: drop.playlist?.title,
       currentPlaylistDraftId: drop.playlist?.sourceDraftId,
     })))
@@ -92,7 +94,11 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
       </div>
       {attachableDrops.length ? <>
         <p>Choose one of your upcoming club slots. This playlist will stay private until its assigned date and time.</p>
-        <DropAttachmentForm drops={attachableDrops} playlists={[]} playlistId={playlist.id} />
+        <DropAttachmentForm
+          drops={attachableDrops}
+          playlists={[{ id: playlist.id, title: playlist.title }]}
+          playlistId={playlist.id}
+        />
       </> : <p>You do not have an upcoming active drop to fill. When your turn reaches the top of a club’s rotation, it will appear here.</p>}
     </section>
 

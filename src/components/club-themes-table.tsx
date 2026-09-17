@@ -30,7 +30,7 @@ export function ClubThemesTable({
   return <section className="panel club-themes-admin" style={{ "--club-accent": normalizeClubAccent(clubAccent) } as React.CSSProperties}>
     <div className="club-themes-admin-header">
       <div><span className="section-kicker">Playlist prompts</span><h2>Club themes</h2><p>{currentTheme ? `${themes.length} theme${themes.length === 1 ? "" : "s"} in this club.` : "This club is currently freeform."}</p></div>
-      <div className="club-themes-admin-actions">{currentTheme && <ClearCurrentThemeButton clubSlug={clubSlug} />}<Link className="button button-dark button-small" href={`/app/clubs/${clubSlug}/themes/new`}><Plus size={15} /> New theme</Link></div>
+      <div className="club-themes-admin-actions">{currentTheme && <ClearCurrentThemeButton clubSlug={clubSlug} themeName={currentTheme.name} />}<Link className="button button-dark button-small" href={`/app/clubs/${clubSlug}/themes/new`}><Plus size={15} /> New theme</Link></div>
     </div>
     <div className="club-themes-table-scroll">
       <table className="club-themes-table">

@@ -17,6 +17,8 @@ type RichTextEditorProps = {
   initialHtml?: string;
   compact?: boolean;
   required?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
   onValueChange: (html: string, text: string) => void;
 };
 
@@ -54,6 +56,8 @@ export const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(fu
   initialHtml = "",
   compact = false,
   required = false,
+  invalid = false,
+  describedBy,
   onValueChange,
 }, forwardedRef) {
   const editorRef = useRef<HTMLDivElement | null>(null);
@@ -105,6 +109,8 @@ export const RichTextEditor = forwardRef<HTMLDivElement, RichTextEditorProps>(fu
       aria-labelledby={labelledBy}
       aria-multiline="true"
       aria-required={required || undefined}
+      aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
       data-placeholder={placeholder}
       onInput={updateValue}
       onPaste={paste}

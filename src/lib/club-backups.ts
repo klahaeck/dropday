@@ -29,6 +29,14 @@ export class ClubBackupError extends Error {
   }
 }
 
+export const BACKUP_PUBLICATION_ACTION = "publish-backup" as const;
+
+export function assertReviewedBackupPublication(action: unknown): asserts action is typeof BACKUP_PUBLICATION_ACTION {
+  if (action !== BACKUP_PUBLICATION_ACTION) {
+    throw new ClubBackupError("Review this backup publication before continuing.", 409);
+  }
+}
+
 function assertAdminMembership(membership: ClubMembership | null | undefined) {
   if (!membership || membership.status !== "active" || membership.role === "member") {
     throw new ClubBackupError("You cannot manage backups for this club.", 403);
@@ -86,6 +94,39 @@ export function planBackupRecovery({
       usedAt: timestamp,
     },
   };
+}
+
+export function planBackupRestoration({
+  club,
+  backup,
+  availableBackups,
+}: {
+  club: Club;
+  backup: ClubBackup | null | undefined;
+  availableBackups: ClubBackup[];
+}): ClubBackup {
+  assertUsableClub(club);
+  if (!backup || backup.clubId !== club.id) {
+    throw new ClubBackupError("Backup playlist not found.", 404);
+  }
+  if (backup.status === "used") {
+    throw new ClubBackupError("A used backup cannot be restored.", 409);
+  }
+  if (backup.status === "available") {
+    throw new ClubBackupError("This backup is already available.", 409);
+  }
+  if (availableBackups.some((candidate) =>
+    candidate.id !== backup.id
+    && candidate.clubId === club.id
+    && candidate.status === "available"
+    && candidate.playlist.sourceDraftId === backup.playlist.sourceDraftId
+  )) {
+    throw new ClubBackupError(
+      "That playlist is already represented by an available backup.",
+      409,
+    );
+  }
+  return { ...backup, status: "available" };
 }
 
 export async function createClubBackup({
@@ -221,6 +262,80 @@ export async function retireClubBackup({
   return result;
 }
 
+export async function restoreClubBackup({
+  clubSlug,
+  backupId,
+  actorUserId,
+}: {
+  clubSlug: string;
+  backupId: string;
+  actorUserId: string;
+}) {
+  if (!integrations.mongo) {
+    const club = demoClubs.find((candidate) => candidate.slug === clubSlug);
+    if (!club) throw new ClubBackupError("Club not found.", 404);
+    assertAdminMembership(demoMemberships.find((membership) =>
+      membership.clubId === club.id && membership.userId === actorUserId
+    ));
+    const backup = demoBackups.find((candidate) => candidate.id === backupId);
+    const restored = planBackupRestoration({
+      club,
+      backup,
+      availableBackups: demoBackups.filter((candidate) =>
+        candidate.clubId === club.id && candidate.status === "available"
+      ),
+    });
+    Object.assign(backup!, restored);
+    return backup!;
+  }
+
+  const db = await getDb();
+  const client = await getMongoClient();
+  let restored: ClubBackup | undefined;
+  await client.withSession(async (session) => session.withTransaction(async () => {
+    const club = await db.collection<Club>("clubs").findOne({ slug: clubSlug }, { session });
+    if (!club) throw new ClubBackupError("Club not found.", 404);
+    const membership = await db.collection<ClubMembership>("memberships").findOne(
+      { clubId: club.id, userId: actorUserId, status: "active" },
+      { session },
+    );
+    assertAdminMembership(membership);
+    const backup = await db.collection<ClubBackup>("clubBackups").findOne(
+      { id: backupId },
+      { session },
+    );
+    const availableBackups = await db.collection<ClubBackup>("clubBackups")
+      .find({ clubId: club.id, status: "available" }, { session })
+      .toArray();
+    planBackupRestoration({ club, backup, availableBackups });
+    try {
+      restored = await db.collection<ClubBackup>("clubBackups").findOneAndUpdate(
+        { id: backupId, clubId: club.id, status: "retired" },
+        { $set: { status: "available" } },
+        { session, returnDocument: "after" },
+      ) ?? undefined;
+    } catch (error) {
+      if (
+        typeof error === "object"
+        && error !== null
+        && "code" in error
+        && error.code === 11000
+      ) {
+        throw new ClubBackupError(
+          "That playlist is already represented by an available backup.",
+          409,
+        );
+      }
+      throw error;
+    }
+    if (!restored) {
+      throw new ClubBackupError("This backup changed before it could be restored.", 409);
+    }
+  }));
+  if (!restored) throw new ClubBackupError("Could not restore this backup.", 500);
+  return restored;
+}
+
 export interface BackupRecoveryResult {
   club: Club;
   drop: DropSlot;
@@ -234,12 +349,15 @@ export async function recoverOverdueDropWithBackup({
   backupId,
   actorUserId,
   queueEffect,
+  reviewedAction,
 }: {
   clubSlug: string;
   backupId: string;
   actorUserId: string;
   queueEffect: ReplacementOutcome["queueEffect"];
+  reviewedAction: typeof BACKUP_PUBLICATION_ACTION;
 }): Promise<BackupRecoveryResult> {
+  assertReviewedBackupPublication(reviewedAction);
   const timestamp = new Date().toISOString();
   if (!integrations.mongo) {
     const club = demoClubs.find((candidate) => candidate.slug === clubSlug);

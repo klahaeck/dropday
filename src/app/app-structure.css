@@ -1,0 +1,636 @@
+/*
+ * Shared application geometry
+ *
+ * Keep colors, borders, shadows, typography, and deliberate spacing in the
+ * skin foundations. Grid/flex tracks, containment, overflow, and responsive
+ * reflow belong here so every skin responds to the available content width.
+ */
+
+:root {
+  --app-sidebar-width: 250px;
+  --app-sidebar-collapsed-width: 76px;
+}
+
+:root:where([data-skin]:not([data-skin="classic"])) {
+  --app-sidebar-width: 248px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
+}
+
+.app-shell[data-state="collapsed"] {
+  grid-template-columns: var(--app-sidebar-collapsed-width) minmax(0, 1fr);
+}
+
+.app-main {
+  min-width: 0;
+  container-name: app-main;
+  container-type: inline-size;
+}
+
+.app-main .app-main-inner {
+  width: 100%;
+  max-width: 1320px;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.app-main :is(
+  .panel,
+  .page-header,
+  .dashboard-grid,
+  .club-layout,
+  .drop-detail-grid,
+  .settings-grid,
+  .form-grid,
+  .club-card,
+  .playlist-card,
+  .club-member-row,
+  .chat-panel,
+  .drop-attachment-form,
+  .rich-text-editor
+) {
+  min-width: 0;
+}
+
+.app-shell > .mobile-app-header,
+.app-shell > .mobile-menu-layer {
+  display: none;
+}
+
+.app-main .temporary-name-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.app-main .page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.app-main .page-header > *,
+.app-main .next-drop > *,
+.app-main .dashboard-grid > *,
+.app-main .club-layout > *,
+.app-main .drop-detail-grid > *,
+.app-main .settings-grid > *,
+.app-main .form-grid > * {
+  min-width: 0;
+}
+
+.app-main .page-actions,
+.app-main .form-actions,
+.app-main .drop-attachment-actions,
+.app-main .club-member-action,
+.app-main .artwork-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.app-main .page-actions {
+  flex-shrink: 0;
+}
+
+.app-main .form-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.app-main .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-main .dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr);
+}
+
+.app-main .dashboard-grid-listening-week {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-main .next-drop {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+}
+
+.app-main .club-grid,
+.app-main .playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-main .club-layout,
+.app-main .drop-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+}
+
+.app-main .settings-grid,
+.app-main .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-main .drop-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-main .drop-attachment-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.app-main .drop-attachment-form :is(.field, select, button),
+.app-main .form-grid :is(.field, input, select, textarea),
+.app-main .ritual-repeat-row :is(input, select),
+.app-main .rich-text-editor,
+.app-main .rich-text-editor-content {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-main .drop-attachment-actions {
+  align-items: center;
+}
+
+.app-main .artwork-picker {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.app-main .artwork-picker-copy {
+  min-width: 0;
+}
+
+.app-main .club-member-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto minmax(0, 240px);
+  align-items: center;
+}
+
+.app-main .club-member-identity,
+.app-main .club-member-action {
+  min-width: 0;
+}
+
+.app-main .club-member-action {
+  justify-content: flex-end;
+}
+
+.app-main .chat-panel {
+  height: min(700px, calc(100dvh - 110px));
+  min-height: min(420px, calc(100dvh - 110px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-main .chat-messages {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.app-main .chat-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+}
+
+.app-main .chat-composer input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Keep off-screen table labels anchored inside the viewport so their static
+ * table position cannot enlarge the root scroll area in embedded browsers. */
+.app-main .sr-only {
+  inset: 0 auto auto 0;
+  clip-path: inset(50%);
+}
+
+/* Field skin rules must not turn visually hidden file inputs into page-width
+ * boxes; keep their clipping geometry authoritative. */
+.app-main .field input.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reflow against the main column, not the viewport/sidebar combination. */
+@container app-main (max-width: 1000px) {
+  .club-grid,
+  .playlist-grid,
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid,
+  .club-layout,
+  .drop-detail-grid,
+  .club-backup-layout,
+  .playlist-version-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .club-backup-history {
+    grid-column: auto;
+  }
+}
+
+@container app-main (max-width: 720px) {
+  .page-header {
+    display: grid;
+    align-items: start;
+  }
+
+  .temporary-name-notice {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .temporary-name-notice .button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .club-grid,
+  .playlist-grid,
+  .settings-grid,
+  .form-grid,
+  .drop-meta-grid,
+  .drop-attachment-form,
+  .next-drop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :root .app-main .field-full {
+    grid-column: auto;
+  }
+
+  .drop-attachment-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  :root .app-main .club-backup-add-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :root .app-main .club-backup-add-form .button {
+    width: 100%;
+  }
+
+  :root .app-main .club-backup-item {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  :root .app-main .club-backup-item > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .artwork-picker {
+    align-items: flex-start;
+  }
+}
+
+@container app-main (max-width: 560px) {
+  .page-actions {
+    display: grid;
+    width: 100%;
+  }
+
+  .page-actions .button,
+  .form-actions .button {
+    width: 100%;
+  }
+
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .club-member-row {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+
+  .club-member-action {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
+  .club-member-action .button {
+    width: 100%;
+  }
+
+  .club-members-header,
+  .club-admin-queue-header {
+    flex-direction: column;
+  }
+
+  .club-members-header > .tiny-label {
+    margin-top: 0;
+  }
+
+  :root .app-main .access-request-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  :root .app-main .access-request-actions {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .artwork-picker {
+    display: grid;
+  }
+}
+
+@container app-main (max-width: 430px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-panel {
+    height: min(620px, calc(100dvh - 96px));
+    min-height: min(320px, calc(100dvh - 96px));
+  }
+
+  :root .app-main .club-card {
+    grid-template-columns: var(--compact-club-art-width, 110px) minmax(0, 1fr);
+  }
+
+  :root .app-main .club-creation-progress {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* State-aware viewport fallbacks cover embedded engines that understand
+ * containment properties but do not evaluate size-container at-rules. */
+@media (min-width: 801px) and (max-width: 1250px) {
+  .app-shell[data-state="expanded"] .app-main :is(.club-grid, .playlist-grid, .stats-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell[data-state="expanded"] .app-main :is(
+    .dashboard-grid,
+    .club-layout,
+    .drop-detail-grid,
+    .club-backup-layout,
+    .playlist-version-grid
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell[data-state="expanded"] .app-main .club-backup-history {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 801px) and (max-width: 1076px) {
+  .app-shell[data-state="collapsed"] .app-main :is(.club-grid, .playlist-grid, .stats-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell[data-state="collapsed"] .app-main :is(
+    .dashboard-grid,
+    .club-layout,
+    .drop-detail-grid,
+    .club-backup-layout,
+    .playlist-version-grid
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell[data-state="collapsed"] .app-main .club-backup-history {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 801px) and (max-width: 970px) {
+  .app-shell[data-state="expanded"] .app-main .page-header {
+    display: grid;
+    align-items: start;
+  }
+
+  .app-shell[data-state="expanded"] .app-main .temporary-name-notice {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-shell[data-state="expanded"] .app-main .temporary-name-notice .button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .app-shell[data-state="expanded"] .app-main :is(
+    .club-grid,
+    .playlist-grid,
+    .settings-grid,
+    .form-grid,
+    .drop-meta-grid,
+    .drop-attachment-form,
+    .next-drop
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell[data-state="expanded"] .app-main .drop-attachment-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* The navigation mode intentionally remains viewport based. */
+@media (max-width: 800px) {
+  .app-shell {
+    display: block;
+  }
+
+  :root .app-shell > .app-sidebar {
+    display: none;
+  }
+
+  :root .app-shell > .mobile-app-header {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  :root .app-shell > .mobile-menu-layer {
+    position: fixed;
+    z-index: 40;
+    inset: 0;
+    display: block;
+  }
+
+  /* Fallback for embedded browsers that expose inline-size containment but do
+   * not evaluate @container rules. Geometry stays owned by this shared layer. */
+  .app-main :is(.club-grid, .playlist-grid, .stats-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-main :is(
+    .dashboard-grid,
+    .club-layout,
+    .drop-detail-grid,
+    .club-backup-layout,
+    .playlist-version-grid
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-main .club-backup-history {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-main .page-header {
+    display: grid;
+    align-items: start;
+  }
+
+  .app-main .temporary-name-notice {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-main .temporary-name-notice .button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .app-main :is(
+    .club-grid,
+    .playlist-grid,
+    .settings-grid,
+    .form-grid,
+    .drop-meta-grid,
+    .drop-attachment-form,
+    .next-drop
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :root .app-main .field-full {
+    grid-column: auto;
+  }
+
+  .app-main .drop-attachment-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  :root .app-main .club-backup-add-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :root .app-main .club-backup-add-form .button {
+    width: 100%;
+  }
+
+  :root .app-main .club-backup-item {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  :root .app-main .club-backup-item > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .app-main .artwork-picker {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-main .page-actions {
+    display: grid;
+    width: 100%;
+  }
+
+  .app-main :is(.page-actions .button, .form-actions .button) {
+    width: 100%;
+  }
+
+  .app-main .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-main .club-member-row {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+
+  .app-main .club-member-action {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
+  .app-main .club-member-action .button {
+    width: 100%;
+  }
+
+  .app-main :is(.club-members-header, .club-admin-queue-header) {
+    flex-direction: column;
+  }
+
+  .app-main .club-members-header > .tiny-label {
+    margin-top: 0;
+  }
+
+  :root .app-main .access-request-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  :root .app-main .access-request-actions {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-main .artwork-picker {
+    display: grid;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-main .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-main .chat-panel {
+    height: min(620px, calc(100dvh - 96px));
+    min-height: min(320px, calc(100dvh - 96px));
+  }
+
+  :root .app-main .club-card {
+    grid-template-columns: var(--compact-club-art-width, 110px) minmax(0, 1fr);
+  }
+
+  :root .app-main .club-creation-progress {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

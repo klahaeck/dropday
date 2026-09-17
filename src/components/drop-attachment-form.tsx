@@ -3,11 +3,17 @@
 import { FormEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, Check, ChevronDown, Library, LoaderCircle, Music2, X } from "lucide-react";
+import {
+  attachmentReviewAction,
+  buildAttachmentCommit,
+  selectPlaylistForReview,
+} from "@/lib/drop-attachment-review";
 
 export interface DropAttachmentOption {
   id: string;
   clubName: string;
   scheduledLabel: string;
+  isLate: boolean;
   currentPlaylistTitle?: string;
   currentPlaylistDraftId?: string;
 }
@@ -34,6 +40,11 @@ export function DropAttachmentForm({
     ?? "";
   const [selectedDropId, setSelectedDropId] = useState(initialDropId);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(initialPlaylistId);
+  const [currentAttachments, setCurrentAttachments] = useState<Record<string, {
+    title?: string;
+    draftId?: string;
+  }>>({});
+  const [reviewReady, setReviewReady] = useState(Boolean(playlistId && initialDropId));
   const [pendingPlaylistId, setPendingPlaylistId] = useState<string>();
   const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
@@ -47,14 +58,22 @@ export function DropAttachmentForm({
 
   const selectedDrop = drops.find((drop) => drop.id === selectedDropId);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
-  const displayedCurrentPlaylistTitle = !playlistId && state === "saved"
-    ? selectedPlaylist?.title
-    : selectedDrop?.currentPlaylistTitle;
-  const isReplacing = Boolean(selectedDrop?.currentPlaylistTitle);
-  const isUpdatingCurrent = Boolean(
-    selectedDrop?.currentPlaylistDraftId
-    && selectedDrop.currentPlaylistDraftId === selectedPlaylistId,
-  );
+  const currentAttachment = currentAttachments[selectedDropId] ?? {
+    title: selectedDrop?.currentPlaylistTitle,
+    draftId: selectedDrop?.currentPlaylistDraftId,
+  };
+  const displayedCurrentPlaylistTitle = currentAttachment?.title;
+  const reviewedAction = attachmentReviewAction({
+    isLate: Boolean(selectedDrop?.isLate),
+    hasCurrentPlaylist: Boolean(currentAttachment?.title),
+    currentDraftId: currentAttachment?.draftId,
+    selectedDraftId: selectedPlaylistId,
+  });
+  const commitLabel = reviewedAction === "publish-late"
+    ? "Publish late now and advance rotation"
+    : reviewedAction === "replace"
+      ? "Replace playlist"
+      : "Attach playlist";
 
   const closePlaylistSelector = useCallback((restoreFocus = false) => {
     setIsPlaylistSelectorOpen(false);
@@ -104,29 +123,53 @@ export function DropAttachmentForm({
     };
   }, [closePlaylistSelector, isPlaylistSelectorOpen, state]);
 
-  async function saveAttachment(nextPlaylistId: string, closeOnSuccess: boolean) {
-    if (!selectedDropId || !nextPlaylistId) return;
-    setPendingPlaylistId(nextPlaylistId);
+  async function saveAttachment() {
+    const commit = buildAttachmentCommit({
+      draftId: selectedPlaylistId,
+      action: reviewedAction,
+      expectedCurrentDraftId: currentAttachment?.draftId,
+      reviewReady,
+    });
+    if (!selectedDropId || !commit) return;
+    setPendingPlaylistId(selectedPlaylistId);
     setState("saving");
     setMessage(undefined);
     try {
       const response = await fetch(`/api/drops/${encodeURIComponent(selectedDropId)}/playlist`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draftId: nextPlaylistId }),
+        body: JSON.stringify(commit),
       });
       const result = (await response.json()) as {
         error?: string;
         warning?: string;
         recovered?: boolean;
+        playlist?: { title: string; sourceDraftId?: string };
       };
-      if (!response.ok) throw new Error(result.error ?? "Could not attach this playlist.");
-      setSelectedPlaylistId(nextPlaylistId);
+      if (!response.ok) {
+        if (response.status === 409) {
+          setReviewReady(false);
+          setCurrentAttachments({});
+          router.refresh();
+        }
+        throw new Error(result.error ?? "Could not attach this playlist.");
+      }
+      const savedPlaylist = result.playlist ?? {
+        title: selectedPlaylist?.title ?? "Attached playlist",
+        sourceDraftId: selectedPlaylistId,
+      };
+      setCurrentAttachments((attachments) => ({
+        ...attachments,
+        [selectedDropId]: {
+          title: savedPlaylist.title,
+          draftId: savedPlaylist.sourceDraftId,
+        },
+      }));
       setState("saved");
+      setReviewReady(false);
       setMessage(result.warning ?? (result.recovered
         ? "Published late. The club rotation is moving again."
         : `Ready for ${selectedDrop?.scheduledLabel ?? "the assigned drop time"}.`));
-      if (closeOnSuccess) closePlaylistSelector(true);
       router.refresh();
     } catch (error) {
       setState("idle");
@@ -136,17 +179,18 @@ export function DropAttachmentForm({
     }
   }
 
-  async function selectPlaylist(nextPlaylistId: string) {
-    if (nextPlaylistId === selectedPlaylistId) {
-      closePlaylistSelector(true);
-      return;
-    }
-    await saveAttachment(nextPlaylistId, true);
+  function selectPlaylist(nextPlaylistId: string) {
+    const selection = selectPlaylistForReview(nextPlaylistId);
+    setSelectedPlaylistId(selection.selectedPlaylistId);
+    setReviewReady(selection.reviewReady);
+    setState("idle");
+    setMessage(undefined);
+    closePlaylistSelector(true);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await saveAttachment(selectedPlaylistId, false);
+    await saveAttachment();
   }
 
   return <form className="drop-attachment-form" onSubmit={submit}>
@@ -156,7 +200,17 @@ export function DropAttachmentForm({
         id={`drop-for-${playlistId ?? "playlist"}`}
         value={selectedDropId}
         onChange={(event) => {
-          setSelectedDropId(event.target.value);
+          const nextDropId = event.target.value;
+          const nextDrop = drops.find((drop) => drop.id === nextDropId);
+          const nextAttachment = currentAttachments[nextDropId] ?? {
+            title: nextDrop?.currentPlaylistTitle,
+            draftId: nextDrop?.currentPlaylistDraftId,
+          };
+          setSelectedDropId(nextDropId);
+          if (!playlistId) {
+            setSelectedPlaylistId(nextAttachment.draftId ?? "");
+          }
+          setReviewReady(Boolean(playlistId));
           setState("idle");
           setMessage(undefined);
         }}
@@ -187,19 +241,39 @@ export function DropAttachmentForm({
     {displayedCurrentPlaylistTitle && <p className="drop-attachment-current">
       Currently attached: <strong>{displayedCurrentPlaylistTitle}</strong>
     </p>}
-    {playlistId && <div className="drop-attachment-actions">
-      <button
+    {reviewReady && selectedDrop && selectedPlaylist && <section className="panel drop-attachment-review" aria-labelledby={`attachment-review-${selectedDrop.id}`}>
+      <span className="section-kicker">Review before committing</span>
+      <h3 id={`attachment-review-${selectedDrop.id}`}>{selectedDrop.clubName} · {selectedDrop.scheduledLabel}</h3>
+      <p>
+        {reviewedAction === "publish-late"
+          ? <><strong>{selectedPlaylist.title}</strong> will publish immediately, count as this drop, and advance the club rotation.</>
+          : reviewedAction === "replace"
+            ? <>Replace <strong>{displayedCurrentPlaylistTitle}</strong> with <strong>{selectedPlaylist.title}</strong>. It stays private until the scheduled drop.</>
+            : reviewedAction === "no-op"
+              ? <><strong>{selectedPlaylist.title}</strong> is already attached. Nothing will change.</>
+              : <>Attach <strong>{selectedPlaylist.title}</strong>. It stays private until the scheduled drop.</>}
+      </p>
+      {reviewedAction !== "no-op" && <button
         className="button button-dark"
         type="submit"
-        disabled={state === "saving" || !selectedDropId || !selectedPlaylistId}
+        disabled={state === "saving"}
       >
-        {state === "saving" ? <><LoaderCircle size={15} className="spin" /> Attaching…</>
-          : state === "saved" ? <><Check size={15} /> Attached</>
-            : <><CalendarCheck size={15} /> {isUpdatingCurrent ? "Update attached playlist" : isReplacing ? "Replace attached playlist" : "Attach to this drop"}</>}
-      </button>
-      {message && <p className={state === "idle" ? "form-error" : "form-note"} role={state === "idle" ? "alert" : "status"}>{message}</p>}
+        {state === "saving"
+          ? <><LoaderCircle size={15} className="spin" /> Saving…</>
+          : <><CalendarCheck size={15} /> {commitLabel}</>}
+      </button>}
+    </section>}
+    {!isPlaylistSelectorOpen && message && <div className="drop-attachment-feedback">
+      <p className={state === "idle" ? "form-error" : "form-note"} role={state === "idle" ? "alert" : "status"}>{message}</p>
+      {!reviewReady && state === "idle" && selectedPlaylistId && <button
+        className="button button-ghost button-small"
+        type="button"
+        onClick={() => {
+          setReviewReady(true);
+          setMessage(undefined);
+        }}
+      >Review latest state</button>}
     </div>}
-    {!playlistId && !isPlaylistSelectorOpen && message && <p className={`drop-attachment-feedback ${state === "idle" ? "form-error" : "form-note"}`} role={state === "idle" ? "alert" : "status"}>{message}</p>}
     {isPlaylistSelectorOpen && <div className="playlist-selector-layer">
       <button
         className="playlist-selector-backdrop"
@@ -243,7 +317,7 @@ export function DropAttachmentForm({
               onClick={() => selectPlaylist(playlist.id)}
             >
               <span className="playlist-selector-option-icon"><Music2 size={18} /></span>
-              <span className="playlist-selector-option-copy"><strong>{playlist.title}</strong><small>{isPending ? "Updating attached playlist…" : isSelected ? "Currently attached" : "Prepared playlist"}</small></span>
+              <span className="playlist-selector-option-copy"><strong>{playlist.title}</strong><small>{isPending ? "Attaching playlist…" : isSelected ? "Selected for review" : "Prepared playlist"}</small></span>
               {isPending ? <LoaderCircle size={18} className="spin" aria-hidden="true" /> : isSelected && <Check size={18} aria-hidden="true" />}
             </button>;
           })}

@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import type {
+  AuditEvent,
   ChatMessage,
   Club,
   ClubBackup,
@@ -213,6 +214,8 @@ export const demoJoinRequests: JoinRequest[] = [
     updatedAt: iso({ hours: -6 }),
   },
 ];
+
+export const demoAuditEvents: AuditEvent[] = [];
 
 export const demoBackups: ClubBackup[] = [];
 
