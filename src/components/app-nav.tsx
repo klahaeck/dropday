@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Settings, Shield } from "lucide-react";
+import { AppNavigationLink } from "@/components/app-navigation-link";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { appNavigationItems } from "@/components/app-navigation-items";
@@ -42,7 +42,7 @@ export function AppNav({
             {appNavigationItems.map(([label, href, Icon]) => (
               <SidebarMenuItem key={href}>
                 <SidebarMenuButton asChild tooltip={label}>
-                  <Link href={href}>
+                  <AppNavigationLink href={href}>
                     <Icon size={18} />
                     <span className="sidebar-menu-label">{label}</span>
                     {href === "/app/notifications" && (
@@ -50,7 +50,7 @@ export function AppNav({
                         <UnreadNotificationBadge key={unreadCount} initialCount={unreadCount} />
                       </SidebarMenuBadge>
                     )}
-                  </Link>
+                  </AppNavigationLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -72,19 +72,19 @@ export function AppNav({
           {isSuperAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Super admin">
-                <Link href="/app/super-admin" className="sidebar-settings">
+                <AppNavigationLink href="/app/super-admin" className="sidebar-settings">
                   <Shield size={17} />
                   <span className="sidebar-menu-label">Super admin</span>
-                </Link>
+                </AppNavigationLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings">
-              <Link href="/app/settings" className="sidebar-settings">
+              <AppNavigationLink href="/app/settings" className="sidebar-settings">
                 <Settings size={17} />
                 <span className="sidebar-menu-label">Settings</span>
-              </Link>
+              </AppNavigationLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

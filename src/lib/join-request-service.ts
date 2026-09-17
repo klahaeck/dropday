@@ -28,6 +28,13 @@ export class JoinRequestDecisionError extends Error {
   }
 }
 
+export class JoinRequestWithdrawalError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "JoinRequestWithdrawalError";
+  }
+}
+
 export function canManageJoinRequests(
   membership: ClubMembership | null | undefined,
   hasClubAdminTools: boolean,
@@ -258,5 +265,64 @@ export async function decideJoinRequest({
 
   if (!result) throw new JoinRequestDecisionError("Could not update this request.", 500);
   if (browserNotification) await deliverBrowserNotification(browserNotification);
+  return result;
+}
+
+export async function withdrawJoinRequest({
+  requestId,
+  actorUserId,
+}: {
+  requestId: string;
+  actorUserId: string;
+}): Promise<{ request: JoinRequest; demo: boolean }> {
+  const timestamp = new Date().toISOString();
+  if (!integrations.mongo) {
+    const request = demoJoinRequests.find((candidate) => candidate.id === requestId);
+    if (!request) throw new JoinRequestWithdrawalError("Join request not found.", 404);
+    if (request.userId !== actorUserId) {
+      throw new JoinRequestWithdrawalError("You can only withdraw your own request.", 403);
+    }
+    if (request.status !== "pending") {
+      throw new JoinRequestWithdrawalError("This request is no longer pending.", 409);
+    }
+    request.status = "withdrawn";
+    request.updatedAt = timestamp;
+    return { request, demo: true };
+  }
+
+  const db = await getDb();
+  const client = await getMongoClient();
+  let result: { request: JoinRequest; demo: boolean } | undefined;
+  await client.withSession(async (session) => session.withTransaction(async () => {
+    const request = await db.collection<JoinRequest>("joinRequests").findOne(
+      { id: requestId },
+      { session },
+    );
+    if (!request) throw new JoinRequestWithdrawalError("Join request not found.", 404);
+    if (request.userId !== actorUserId) {
+      throw new JoinRequestWithdrawalError("You can only withdraw your own request.", 403);
+    }
+    if (request.status !== "pending") {
+      throw new JoinRequestWithdrawalError("This request is no longer pending.", 409);
+    }
+
+    const update = await db.collection<JoinRequest>("joinRequests").updateOne(
+      { id: request.id, userId: actorUserId, status: "pending" },
+      { $set: { status: "withdrawn", updatedAt: timestamp } },
+      { session },
+    );
+    if (update.modifiedCount !== 1) {
+      throw new JoinRequestWithdrawalError(
+        "This request changed while it was being withdrawn. Try again.",
+        409,
+      );
+    }
+    result = {
+      request: { ...request, status: "withdrawn", updatedAt: timestamp },
+      demo: false,
+    };
+  }));
+
+  if (!result) throw new JoinRequestWithdrawalError("Could not withdraw this request.", 500);
   return result;
 }

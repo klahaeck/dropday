@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyDropAttachmentAction,
   DropAttachmentError,
   planDropAttachment,
+  verifyReviewedDropAttachment,
 } from "@/lib/drop-attachment";
 import type {
   Club,
@@ -105,6 +107,56 @@ function plan(overrides: {
 }
 
 describe("drop attachment", () => {
+  it("classifies scheduled attachments, replacements, and unchanged drafts", () => {
+    expect(classifyDropAttachmentAction({
+      drop,
+      requestedDraftId: draft.id,
+      timestamp,
+    })).toBe("attach");
+    expect(classifyDropAttachmentAction({
+      drop: { ...drop, playlist: { ...plan(), sourceDraftId: "draft-old" } },
+      requestedDraftId: draft.id,
+      timestamp,
+    })).toBe("replace");
+    expect(classifyDropAttachmentAction({
+      drop: { ...drop, playlist: plan() },
+      requestedDraftId: draft.id,
+      timestamp,
+    })).toBe("no-op");
+  });
+
+  it("classifies overdue and elapsed scheduled slots as immediate publication", () => {
+    expect(classifyDropAttachmentAction({
+      drop: { ...drop, status: "overdue" },
+      requestedDraftId: draft.id,
+      timestamp,
+    })).toBe("publish-late");
+    expect(classifyDropAttachmentAction({
+      drop: { ...drop, scheduledFor: timestamp },
+      requestedDraftId: draft.id,
+      timestamp,
+    })).toBe("publish-late");
+  });
+
+  it("rejects stale reviewed actions and current playlist identifiers", () => {
+    const withCurrent = { ...drop, playlist: { ...plan(), sourceDraftId: "draft-old" } };
+    expect(() => verifyReviewedDropAttachment({
+      drop: withCurrent,
+      draftId: draft.id,
+      reviewedAction: "attach",
+      expectedCurrentDraftId: "draft-old",
+      timestamp,
+    })).toThrowError(/changed after you reviewed/i);
+    expect(() => verifyReviewedDropAttachment({
+      drop: withCurrent,
+      draftId: draft.id,
+      reviewedAction: "replace",
+      expectedCurrentDraftId: null,
+      timestamp,
+    })).toThrowError(/changed after you reviewed/i);
+    expect(withCurrent.playlist.sourceDraftId).toBe("draft-old");
+  });
+
   it("snapshots the prepared playlist and current club theme for the scheduled slot", () => {
     const snapshot = plan();
 

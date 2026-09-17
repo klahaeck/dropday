@@ -41,7 +41,7 @@ export function PlaylistLibraryTable({
                         ? <Image src={draft.metadata.artworkUrl} alt="" fill sizes="52px" unoptimized />
                         : <span>{draft.title.slice(0, 2).toUpperCase()}</span>}
                     </div>
-                    <div><strong>{draft.title}</strong><small>Prepared drop</small></div>
+                    <div><strong>{draft.title}</strong><small>Prepared playlist</small></div>
                   </Link>
                 </td>
                 <td><p className="playlist-library-table-description">{truncateDescription(draft.description)}</p></td>

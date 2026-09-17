@@ -32,7 +32,7 @@ export default async function EditClubThemePage({
       ?? listPastClubThemes(club, drops).find((candidate) => candidate.version === version);
   if (!theme) notFound();
 
-  const cancelHref = `/app/clubs/${club.slug}/settings`;
+  const cancelHref = `/app/clubs/${club.slug}/settings/themes`;
   return <>
     <header className="page-header"><div><span className="section-kicker">{club.name} · Theme #{theme.version}</span><h1>Edit theme</h1><p>Update this theme’s prompt or artwork without creating a new theme version.</p></div></header>
     <EditClubThemeForm clubSlug={club.slug} ownerId={profile.id} theme={theme} cancelHref={cancelHref} />

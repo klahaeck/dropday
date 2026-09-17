@@ -14,6 +14,7 @@ import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
 const schema = z.object({
   backupId: z.string().trim().min(1).max(160),
   queueEffect: z.enum(["consumeTurn", "preserveTurn"]),
+  reviewedAction: z.literal("publish-backup"),
 });
 
 export async function POST(
@@ -55,6 +56,7 @@ export async function POST(
       backupId: parsed.data.backupId,
       actorUserId: profile.id,
       queueEffect: parsed.data.queueEffect,
+      reviewedAction: parsed.data.reviewedAction,
     });
     let scheduleFailed = false;
     let deliveryFailed = false;

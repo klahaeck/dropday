@@ -11,6 +11,8 @@ import { dispatchOutbox, scheduleDropTasks } from "@/lib/scheduler";
 
 const schema = z.object({
   draftId: z.string().trim().min(1).max(160),
+  reviewedAction: z.enum(["attach", "replace", "publish-late"]),
+  expectedCurrentDraftId: z.string().trim().min(1).max(160).nullable(),
 });
 
 export async function PUT(
@@ -41,6 +43,8 @@ export async function PUT(
       dropId,
       draftId: parsed.data.draftId,
       actorUserId: profile.id,
+      reviewedAction: parsed.data.reviewedAction,
+      expectedCurrentDraftId: parsed.data.expectedCurrentDraftId,
     });
     let scheduleFailed = false;
     let deliveryFailed = false;
@@ -78,6 +82,11 @@ export async function PUT(
       drop: result.drop,
       demo: result.demo,
       recovered: result.drop.status === "published",
+      action: result.action,
+      playlist: {
+        title: result.playlist.title,
+        sourceDraftId: result.playlist.sourceDraftId,
+      },
       warning,
     });
   } catch (error) {

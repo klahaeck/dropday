@@ -133,7 +133,7 @@ export interface JoinRequest {
   clubId: Id;
   userId: Id;
   message?: string;
-  status: "pending" | "approved" | "declined" | "blocked-by-entitlement";
+  status: "pending" | "approved" | "declined" | "withdrawn" | "blocked-by-entitlement";
   createdAt: IsoDate;
   updatedAt: IsoDate;
 }
@@ -222,6 +222,8 @@ export interface ChatMessage {
   body: string;
   mentionedUserIds?: Id[];
   reactions: ChatReaction[];
+  /** Existing messages without this field are interpreted as revision zero. */
+  reactionRevision?: number;
   deletedAt?: IsoDate;
   createdAt: IsoDate;
 }

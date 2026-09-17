@@ -53,7 +53,7 @@ export function PlaylistCard({
         {attachedClubNames.length > 0 && <div className="playlist-card-attachment"><CalendarCheck size={13} /> <span>Attached to <strong>{attachedClubNames.join(", ")}</strong></span></div>}
         {!isDraft(playlist) && droppedBy && <div className="playlist-card-author"><UserRound size={13} /> Dropped by <strong>{droppedBy}</strong></div>}
         <div className="playlist-card-foot">
-          <span>{isDraft(playlist) ? "Prepared drop" : playlist.theme?.name ?? "Freeform"}</span>
+          <span>{isDraft(playlist) ? "Prepared playlist" : playlist.theme?.name ?? "Freeform"}</span>
           {href && <ArrowUpRight size={17} />}
         </div>
       </div>
