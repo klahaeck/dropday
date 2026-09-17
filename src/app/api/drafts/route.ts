@@ -3,32 +3,24 @@ import { z } from "zod";
 import { requireViewer } from "@/lib/auth";
 import { discardArtwork, isOwnedArtworkUrl } from "@/lib/blob-artwork";
 import { integrations } from "@/lib/env";
-import {
-  PLAYLIST_DESCRIPTION_HTML_MAX_LENGTH,
-  PLAYLIST_DESCRIPTION_MAX_LENGTH,
-  playlistDescriptionToText,
-  sanitizePlaylistDescriptionHtml,
-} from "@/lib/playlist-description";
+import { firstPlaylistDraftError, validatePlaylistDraft } from "@/lib/playlist-draft-validation";
 import { resolvePlaylist } from "@/lib/playlist-providers";
 import { createId, insertDraft } from "@/lib/repository";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import type { PlaylistDraft, PlaylistMetadata } from "@/types/domain";
 
 const schema = z.object({
-  url: z.string().trim().max(500).optional(),
-  spotifyUrl: z.string().trim().max(500).optional(),
-  appleMusicUrl: z.string().trim().max(500).optional(),
-  title: z.string().trim().min(2).max(100),
-  descriptionHtml: z.string().max(PLAYLIST_DESCRIPTION_HTML_MAX_LENGTH),
+  url: z.unknown().optional(),
+  spotifyUrl: z.unknown().optional(),
+  appleMusicUrl: z.unknown().optional(),
+  title: z.unknown().optional(),
+  descriptionHtml: z.unknown().optional(),
   artworkUrl: z.string().url().max(1_000).refine((value) => {
     const url = new URL(value);
     return url.protocol === "https:"
       && url.hostname.endsWith(".public.blob.vercel-storage.com")
       && url.pathname.startsWith("/artwork/playlist/");
   }, "Upload artwork through Vercel Blob").optional(),
-}).refine((value) => value.url || value.spotifyUrl || value.appleMusicUrl, {
-  message: "Add a Spotify or Apple Music playlist URL",
-  path: ["spotifyUrl"],
 });
 
 export async function POST(request: Request) {
@@ -41,25 +33,22 @@ export async function POST(request: Request) {
   if (parsed.data.artworkUrl && !isOwnedArtworkUrl(parsed.data.artworkUrl, "playlist", profile.id)) {
     return NextResponse.json({ error: "This playlist artwork does not belong to your account." }, { status: 403 });
   }
-  const descriptionHtml = sanitizePlaylistDescriptionHtml(parsed.data.descriptionHtml);
-  const description = playlistDescriptionToText(descriptionHtml);
-  if (description.length < 2) {
+  const validation = validatePlaylistDraft(parsed.data);
+  if (!validation.success) {
     await discardArtwork(parsed.data.artworkUrl);
-    return NextResponse.json({ error: "Add a description before saving this playlist." }, { status: 400 });
+    const issue = firstPlaylistDraftError(validation.errors);
+    return NextResponse.json({ error: issue?.error ?? "Invalid playlist", field: issue?.field }, { status: 400 });
   }
-  if (description.length > PLAYLIST_DESCRIPTION_MAX_LENGTH) {
-    await discardArtwork(parsed.data.artworkUrl);
-    return NextResponse.json({ error: `Keep the description to ${PLAYLIST_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 });
-  }
+  const { description, descriptionHtml } = validation.data;
   if (!(await consumeRateLimit(`draft:${profile.id}`, 12, 60))) {
     await discardArtwork(parsed.data.artworkUrl);
     return NextResponse.json({ error: "Too many drafts. Try again in a minute." }, { status: 429 });
   }
   try {
     const requestedVersions = [
-      parsed.data.spotifyUrl ? { expectedProvider: "spotify" as const, url: parsed.data.spotifyUrl } : undefined,
-      parsed.data.appleMusicUrl ? { expectedProvider: "apple-music" as const, url: parsed.data.appleMusicUrl } : undefined,
-      parsed.data.url ? { expectedProvider: undefined, url: parsed.data.url } : undefined,
+      validation.data.spotifyUrl ? { expectedProvider: "spotify" as const, field: "spotifyUrl" as const, url: validation.data.spotifyUrl } : undefined,
+      validation.data.appleMusicUrl ? { expectedProvider: "apple-music" as const, field: "appleMusicUrl" as const, url: validation.data.appleMusicUrl } : undefined,
+      validation.data.legacyUrl ? { expectedProvider: undefined, field: "spotifyUrl" as const, url: validation.data.legacyUrl } : undefined,
     ].filter((item): item is NonNullable<typeof item> => Boolean(item));
     const resolvedVersions = await Promise.all(requestedVersions.map(async ({ expectedProvider, url }) => {
       const resolved = await resolvePlaylist(url);
@@ -79,7 +68,7 @@ export async function POST(request: Request) {
     const metadata: PlaylistMetadata = metadataSource?.metadata ?? {};
     const timestamp = new Date().toISOString();
     const draft: PlaylistDraft = {
-      id: createId("draft"), ownerId: profile.id, title: parsed.data.title, description, descriptionHtml,
+      id: createId("draft"), ownerId: profile.id, title: validation.data.title, description, descriptionHtml,
       provider: primary.provider, providerPlaylistId: primary.providerPlaylistId, canonicalUrl: primary.canonicalUrl,
       embedUrl: primary.embedUrl,
       versions: versions.map(({ provider, providerPlaylistId, canonicalUrl, embedUrl }) => ({
@@ -93,6 +82,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ draft, warning: warnings[0], demo: !integrations.mongo }, { status: 201 });
   } catch (error) {
     await discardArtwork(parsed.data.artworkUrl);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid playlist URL" }, { status: 400 });
+    const message = error instanceof Error ? error.message : "Invalid playlist URL";
+    const field = requestedFieldFromProviderError(message);
+    return NextResponse.json({ error: message, field }, { status: 400 });
   }
+}
+
+function requestedFieldFromProviderError(message: string) {
+  if (message.includes("Apple Music")) return "appleMusicUrl" as const;
+  if (message.includes("Spotify") || message.includes("playlist URL")) return "spotifyUrl" as const;
+  return undefined;
 }

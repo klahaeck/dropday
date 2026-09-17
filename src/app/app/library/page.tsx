@@ -26,7 +26,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   }
   return <>
     <header className="page-header">
-      <div><span className="section-kicker">Ready before your turn</span><h1>Playlist library</h1><p>Keep reusable drop drafts here, with links for each listening platform your club uses.</p></div>
+      <div><span className="section-kicker">Ready before your turn</span><h1>Playlist library</h1><p>Keep reusable playlists here, with links for each listening platform your club uses.</p></div>
       <Link href="/app/library/new" className="button button-dark"><Plus size={16} /> Prepare a playlist</Link>
     </header>
     {drafts.length ? <>

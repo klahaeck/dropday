@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, Compass, Menu, Plus, Settings, Shield, X } from "lucide-react";
+import { AppNavigationLink } from "@/components/app-navigation-link";
 import { appNavigationItems } from "@/components/app-navigation-items";
 import { Avatar } from "@/components/avatar";
 import { Brand } from "@/components/brand";
@@ -96,14 +97,14 @@ export function MobileAppHeader({
       <header className="mobile-app-header">
         <Brand href="/app" compact />
         <nav className="mobile-nav" aria-label="Mobile shortcuts">
-          <Link href="/app/discover" aria-label="Discover">
+          <AppNavigationLink href="/app/discover" aria-label="Discover">
             <Compass size={17} />
-          </Link>
-          <Link href="/app/notifications">
+          </AppNavigationLink>
+          <AppNavigationLink href="/app/notifications">
             <Bell size={17} />
             <span className="sr-only">Notifications</span>
             <UnreadNotificationBadge key={unreadCount} initialCount={unreadCount} />
-          </Link>
+          </AppNavigationLink>
           <button
             ref={menuButtonRef}
             type="button"
@@ -147,18 +148,18 @@ export function MobileAppHeader({
             </div>
             <nav className="app-navigation mobile-menu-navigation" aria-label="Application">
               {appNavigationItems.map(([label, href, Icon]) => (
-                <Link href={href} key={href} onClick={() => closeMenu()}>
+                <AppNavigationLink href={href} key={href} onClick={() => closeMenu()}>
                   <Icon size={18} />
                   <span>{label}</span>
                   {href === "/app/notifications" && (
                     <UnreadNotificationBadge key={unreadCount} initialCount={unreadCount} />
                   )}
-                </Link>
+                </AppNavigationLink>
               ))}
             </nav>
             <div className="mobile-menu-actions">
-              <Link className="button button-ghost button-full" href="/app/library" onClick={() => closeMenu()}>
-                Prepare a drop
+              <Link className="button button-ghost button-full" href="/app/library/new" onClick={() => closeMenu()}>
+                Prepare a playlist
               </Link>
               <Link className="button button-dark button-full" href="/app/clubs/new" onClick={() => closeMenu()}>
                 <Plus size={16} /> New club
@@ -175,13 +176,13 @@ export function MobileAppHeader({
               </div>
             )}
             {isSuperAdmin && (
-              <Link href="/app/super-admin" className="sidebar-settings" onClick={() => closeMenu()}>
+              <AppNavigationLink href="/app/super-admin" className="sidebar-settings" onClick={() => closeMenu()}>
                 <Shield size={17} /> Super admin
-              </Link>
+              </AppNavigationLink>
             )}
-            <Link href="/app/settings" className="sidebar-settings" onClick={() => closeMenu()}>
+            <AppNavigationLink href="/app/settings" className="sidebar-settings" onClick={() => closeMenu()}>
               <Settings size={17} /> Settings
-            </Link>
+            </AppNavigationLink>
             <div className="sidebar-user">
               <div className="sidebar-user-avatar">
                 {clerkEnabled ? <ClerkUserMenu enabled /> : <Avatar user={user} />}

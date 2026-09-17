@@ -11,6 +11,11 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import {
+  backupRetirementConfirmation,
+  reconcileBackupStatus,
+} from "@/lib/admin-action-safety";
 
 interface BackupOption {
   id: string;
@@ -20,6 +25,10 @@ interface BackupOption {
   createdLabel: string;
   usedLabel?: string;
 }
+
+type PendingConfirmation =
+  | { kind: "retire"; backup: BackupOption }
+  | { kind: "recover"; backup: BackupOption; queueEffect: "consumeTurn" | "preserveTurn" };
 
 export function ClubBackups({
   clubSlug,
@@ -53,7 +62,12 @@ export function ClubBackups({
   const [backupId, setBackupId] = useState(availableBackups[0]?.id ?? "");
   const [queueEffect, setQueueEffect] = useState<"consumeTurn" | "preserveTurn">("preserveTurn");
   const [pendingAction, setPendingAction] = useState<string>();
-  const [message, setMessage] = useState<{ kind: "success" | "error"; text: string }>();
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>();
+  const [message, setMessage] = useState<{
+    kind: "success" | "error";
+    text: string;
+    undoBackup?: Pick<BackupOption, "id" | "title">;
+  }>();
   const router = useRouter();
   const selectedDraftId = availableDrafts.some((playlist) => playlist.id === draftId)
     ? draftId
@@ -103,7 +117,8 @@ export function ClubBackups({
     }
   }
 
-  async function retireBackup(id: string) {
+  async function retireBackup(backup: BackupOption) {
+    const id = backup.id;
     setPendingAction(`retire:${id}`);
     setMessage(undefined);
     try {
@@ -113,15 +128,22 @@ export function ClubBackups({
       );
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error ?? "Could not retire this backup.");
-      setBackupItems((items) => items.map((backup) =>
-        backup.id === id ? { ...backup, status: "retired" } : backup
-      ));
-      setMessage({ kind: "success", text: "Backup removed from the available crate." });
+      setBackupItems((items) => reconcileBackupStatus(items, {
+        type: "retire-success",
+        backupId: id,
+      }));
+      setPendingConfirmation(undefined);
+      setMessage({
+        kind: "success",
+        text: "Backup removed from the available crate.",
+        undoBackup: { id, title: backup.title },
+      });
       if (selectedBackupId === id) {
         setBackupId(availableBackups.find((backup) => backup.id !== id)?.id ?? "");
       }
       router.refresh();
     } catch (error) {
+      setPendingConfirmation(undefined);
       setMessage({
         kind: "error",
         text: error instanceof Error ? error.message : "Could not retire this backup.",
@@ -131,9 +153,53 @@ export function ClubBackups({
     }
   }
 
-  async function publishBackup(event: FormEvent<HTMLFormElement>) {
+  async function restoreBackup(backup: Pick<BackupOption, "id" | "title">) {
+    setPendingAction(`restore:${backup.id}`);
+    setMessage(undefined);
+    try {
+      const response = await fetch(
+        `/api/clubs/${encodeURIComponent(clubSlug)}/backups/${encodeURIComponent(backup.id)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "restore" }),
+        },
+      );
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Could not restore this backup.");
+      setBackupItems((items) => reconcileBackupStatus(items, {
+        type: "restore-success",
+        backupId: backup.id,
+      }));
+      setBackupId(backup.id);
+      setMessage({ kind: "success", text: `“${backup.title}” is available again.` });
+      router.refresh();
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text: error instanceof Error ? error.message : "Could not restore this backup.",
+        undoBackup: backup,
+      });
+    } finally {
+      setPendingAction(undefined);
+    }
+  }
+
+  function reviewBackupPublication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedBackupId || !activeOverdueDrop) return;
+    const backup = availableBackups.find((candidate) => candidate.id === selectedBackupId);
+    if (!backup || !activeOverdueDrop) return;
+    setMessage(undefined);
+    setPendingConfirmation({ kind: "recover", backup, queueEffect });
+  }
+
+  async function publishBackup() {
+    if (
+      pendingConfirmation?.kind !== "recover"
+      || !activeOverdueDrop
+    ) return;
+    const reviewedBackupId = pendingConfirmation.backup.id;
+    const reviewedQueueEffect = pendingConfirmation.queueEffect;
     setPendingAction("recover");
     setMessage(undefined);
     try {
@@ -142,23 +208,29 @@ export function ClubBackups({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ backupId: selectedBackupId, queueEffect }),
+          body: JSON.stringify({
+            backupId: reviewedBackupId,
+            queueEffect: reviewedQueueEffect,
+            reviewedAction: "publish-backup",
+          }),
         },
       );
       const result = (await response.json()) as { error?: string; warning?: string };
       if (!response.ok) throw new Error(result.error ?? "Could not publish this backup.");
       setBackupItems((items) => items.map((backup) =>
-        backup.id === selectedBackupId
+        backup.id === reviewedBackupId
           ? { ...backup, status: "used", usedLabel: "just now" }
           : backup
       ));
       setRecoveryComplete(true);
+      setPendingConfirmation(undefined);
       setMessage({
         kind: "success",
         text: result.warning ?? "Backup published and the rotation is moving again.",
       });
       router.refresh();
     } catch (error) {
+      setPendingConfirmation(undefined);
       setMessage({
         kind: "error",
         text: error instanceof Error ? error.message : "Could not publish this backup.",
@@ -211,7 +283,7 @@ export function ClubBackups({
               className="button button-ghost button-small"
               type="button"
               disabled={Boolean(pendingAction)}
-              onClick={() => retireBackup(backup.id)}
+              onClick={() => setPendingConfirmation({ kind: "retire", backup })}
               aria-label={`Remove ${backup.title} from the backup crate`}
             >
               {pendingAction === `retire:${backup.id}`
@@ -233,7 +305,7 @@ export function ClubBackups({
       </div>
       {activeOverdueDrop ? <>
         <p><strong>{activeOverdueDrop.assigneeName}</strong> missed the drop scheduled for {activeOverdueDrop.scheduledLabel}. The assignee can still publish from their library, or an admin can use a backup below.</p>
-        {availableBackups.length ? <form className="club-recovery-form" onSubmit={publishBackup}>
+        {availableBackups.length ? <form className="club-recovery-form" onSubmit={reviewBackupPublication}>
           <div className="field">
             <label htmlFor="recovery-backup">Backup playlist</label>
             <select
@@ -277,7 +349,7 @@ export function ClubBackups({
           >
             {pendingAction === "recover"
               ? <><LoaderCircle size={15} className="spin" /> Publishing…</>
-              : <><RotateCcw size={15} /> Publish backup now</>}
+              : <><RotateCcw size={15} /> Review backup publication</>}
           </button>
         </form> : <p className="form-note form-error">Add a backup playlist before resolving this overdue drop.</p>}
       </> : <p>There is no overdue drop. Backups stay private and available until the club needs one.</p>}
@@ -289,7 +361,15 @@ export function ClubBackups({
         {inactiveBackups.map((backup) => <article className="club-backup-item" key={backup.id}>
           <span className="club-backup-icon"><Disc3 size={18} /></span>
           <div><strong>{backup.title}</strong><small>{backup.status === "used" ? `Used ${backup.usedLabel ?? ""}` : "Removed from the crate"}</small></div>
-          <span className="tiny-label">{backup.status}</span>
+          {backup.status === "retired" ? <button
+            className="button button-ghost button-small"
+            type="button"
+            disabled={Boolean(pendingAction)}
+            onClick={() => void restoreBackup(backup)}
+          >
+            {pendingAction === `restore:${backup.id}` && <LoaderCircle size={14} className="spin" />}
+            Restore
+          </button> : <span className="tiny-label">{backup.status}</span>}
         </article>)}
       </div>
     </section>}
@@ -298,7 +378,43 @@ export function ClubBackups({
       className={message.kind === "error" ? "form-error club-backup-message" : "form-note club-backup-message"}
       role={message.kind === "error" ? "alert" : "status"}
     >
-      {message.text}
+      {message.text}{" "}
+      {message.undoBackup && <button
+        className="button button-ghost button-small"
+        type="button"
+        disabled={Boolean(pendingAction)}
+        onClick={() => void restoreBackup(message.undoBackup!)}
+      >
+        {pendingAction === `restore:${message.undoBackup.id}` && <LoaderCircle size={14} className="spin" />}
+        Undo
+      </button>}
     </p>}
+    <ConfirmationDialog
+      open={Boolean(pendingConfirmation)}
+      title={pendingConfirmation?.kind === "retire"
+        ? backupRetirementConfirmation(pendingConfirmation.backup.title).title
+        : "Publish this backup now?"}
+      description={pendingConfirmation?.kind === "retire"
+        ? <p>{backupRetirementConfirmation(pendingConfirmation.backup.title).description}</p>
+        : pendingConfirmation?.kind === "recover" && activeOverdueDrop
+          ? <p>
+            <strong>{pendingConfirmation.backup.title}</strong> will publish for the drop assigned to <strong>{activeOverdueDrop.assigneeName}</strong> at {activeOverdueDrop.scheduledLabel}. {pendingConfirmation.queueEffect === "preserveTurn"
+              ? "The missed member keeps their place at the front of the active queue."
+              : "This counts as the missed member’s turn and advances them to the end of the queue."}
+          </p>
+          : <p>Review this action before continuing.</p>}
+      confirmLabel={pendingConfirmation?.kind === "retire"
+        ? backupRetirementConfirmation(pendingConfirmation.backup.title).confirmLabel
+        : "Publish backup now"}
+      pending={Boolean(pendingAction)}
+      onCancel={() => setPendingConfirmation(undefined)}
+      onConfirm={() => {
+        if (pendingConfirmation?.kind === "retire") {
+          void retireBackup(pendingConfirmation.backup);
+        } else {
+          void publishBackup();
+        }
+      }}
+    />
   </div>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ArrowRightLeft,
@@ -7,20 +8,47 @@ import {
   LoaderCircle,
   ShieldCheck,
   ShieldMinus,
+  Trash2,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { Pill } from "@/components/pill";
+import {
+  ownershipTransferConfirmation,
+  roleChangeConfirmation,
+} from "@/lib/admin-action-safety";
 import type { ClubRole, UserProfile } from "@/types/domain";
 
 export type ClubMemberItem = Pick<UserProfile, "id" | "displayName" | "initials" | "imageUrl"> & {
   role: ClubRole;
   isPrimaryOwner?: boolean;
+  canRemove?: boolean;
+  ownsActiveTurn?: boolean;
+  activeTurnHasPlaylist?: boolean;
 };
 
 type Feedback = {
   kind: "saved" | "error";
   message: string;
 } | undefined;
+
+type PendingRoleChange = {
+  member: ClubMemberItem;
+  role: ClubRole;
+  transferOwnership: boolean;
+  title: string;
+  description: string;
+  confirmLabel: string;
+};
+
+export function memberRemovalDescription(member: ClubMemberItem) {
+  if (!member.ownsActiveTurn) {
+    return `${member.displayName} will lose access and be removed from the rotation.`;
+  }
+  return member.activeTurnHasPlaylist
+    ? `${member.displayName} will lose access. Their active drop will move to the next eligible member and its attached playlist will be removed.`
+    : `${member.displayName} will lose access and their active drop will move to the next eligible member.`;
+}
 
 const roleRank: Record<ClubRole, number> = {
   owner: 0,
@@ -53,26 +81,21 @@ export function ClubMembers({
   canManageRoles: boolean;
   canManageOwnership: boolean;
 }) {
+  const router = useRouter();
   const [members, setMembers] = useState(() =>
     [...initialMembers].sort(compareMembers)
   );
   const [busyMemberId, setBusyMemberId] = useState<string>();
   const [feedback, setFeedback] = useState<Feedback>();
   const [canEditRoles, setCanEditRoles] = useState(canManageRoles);
+  const [pendingRoleChange, setPendingRoleChange] = useState<PendingRoleChange>();
+  const [pendingRemoval, setPendingRemoval] = useState<ClubMemberItem>();
 
   async function changeRole(
     member: ClubMemberItem,
     role: ClubRole,
     transferOwnership = false,
   ) {
-    if (
-      transferOwnership
-      && !window.confirm(
-        `Transfer primary ownership of this club to ${member.displayName}? You will become an admin.`,
-      )
-    ) {
-      return;
-    }
     setBusyMemberId(member.id);
     setFeedback(undefined);
 
@@ -126,6 +149,68 @@ export function ClubMembers({
       });
     } finally {
       setBusyMemberId(undefined);
+      setPendingRoleChange(undefined);
+    }
+  }
+
+  function requestRoleChange(
+    member: ClubMemberItem,
+    role: ClubRole,
+    transferOwnership = false,
+  ) {
+    const confirmation = transferOwnership
+      ? ownershipTransferConfirmation(member.displayName)
+      : roleChangeConfirmation({
+        memberName: member.displayName,
+        from: member.role,
+        to: role,
+      });
+    if (!confirmation) {
+      void changeRole(member, role, transferOwnership);
+      return;
+    }
+    setPendingRoleChange({
+      member,
+      role,
+      transferOwnership,
+      ...confirmation,
+    });
+  }
+
+  async function removeMember(member: ClubMemberItem) {
+    setBusyMemberId(member.id);
+    setFeedback(undefined);
+    try {
+      const response = await fetch(
+        `/api/clubs/${encodeURIComponent(clubSlug)}/members/${encodeURIComponent(member.id)}`,
+        { method: "DELETE" },
+      );
+      const result = await response.json() as {
+        error?: string;
+        reassignedMemberId?: string;
+      };
+      if (!response.ok) {
+        const recovery = response.status === 409
+          ? " Review ownership and ensure another unpaused member can take the active drop, then try again."
+          : "";
+        throw new Error(`${result.error ?? "Could not remove this member."}${recovery}`);
+      }
+      setMembers((current) => current.filter((item) => item.id !== member.id));
+      setFeedback({
+        kind: "saved",
+        message: result.reassignedMemberId
+          ? `${member.displayName} was removed and the active drop was reassigned.`
+          : `${member.displayName} was removed from the club.`,
+      });
+      router.refresh();
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Could not remove this member.",
+      });
+    } finally {
+      setBusyMemberId(undefined);
+      setPendingRemoval(undefined);
     }
   }
 
@@ -182,7 +267,7 @@ export function ClubMembers({
                           className="button button-ghost button-small"
                           type="button"
                           disabled={Boolean(busyMemberId)}
-                          onClick={() => void changeRole(member, "admin")}
+                          onClick={() => requestRoleChange(member, "admin")}
                           aria-label={`Remove ${member.displayName} as a co-owner`}
                         >
                           {busy
@@ -196,7 +281,7 @@ export function ClubMembers({
                         className="button button-ghost button-small"
                         type="button"
                         disabled={Boolean(busyMemberId)}
-                        onClick={() => void changeRole(
+                        onClick={() => requestRoleChange(
                           member,
                           member.role === "admin" ? "member" : "admin",
                         )}
@@ -217,7 +302,7 @@ export function ClubMembers({
                         className="button button-ghost button-small"
                         type="button"
                         disabled={Boolean(busyMemberId)}
-                        onClick={() => void changeRole(member, "owner")}
+                        onClick={() => requestRoleChange(member, "owner")}
                         aria-label={`Make ${member.displayName} a co-owner`}
                       >
                         <Crown size={14} aria-hidden="true" />
@@ -229,7 +314,7 @@ export function ClubMembers({
                         className="button button-dark button-small"
                         type="button"
                         disabled={Boolean(busyMemberId)}
-                        onClick={() => void changeRole(member, "owner", true)}
+                        onClick={() => requestRoleChange(member, "owner", true)}
                         aria-label={`Transfer club ownership to ${member.displayName}`}
                       >
                         <ArrowRightLeft size={14} aria-hidden="true" />
@@ -242,6 +327,20 @@ export function ClubMembers({
                     {member.id === currentUserId ? "You are an owner" : "Club owner"}
                   </span>
                 ) : null}
+                {member.canRemove && (
+                  <button
+                    className="button button-ghost button-small"
+                    type="button"
+                    disabled={Boolean(busyMemberId)}
+                    onClick={() => setPendingRemoval(member)}
+                    aria-label={`Remove ${member.displayName} from the club`}
+                  >
+                    {busy
+                      ? <LoaderCircle size={14} className="spin" aria-hidden="true" />
+                      : <Trash2 size={14} aria-hidden="true" />}
+                    {busy ? "Removing…" : "Remove member"}
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -254,6 +353,34 @@ export function ClubMembers({
       >
         {feedback?.message}
       </p>
+      <ConfirmationDialog
+        open={Boolean(pendingRoleChange)}
+        title={pendingRoleChange?.title ?? "Confirm role change"}
+        description={<p>{pendingRoleChange?.description}</p>}
+        confirmLabel={pendingRoleChange?.confirmLabel ?? "Confirm"}
+        pending={Boolean(busyMemberId)}
+        onCancel={() => setPendingRoleChange(undefined)}
+        onConfirm={() => {
+          if (pendingRoleChange) {
+            void changeRole(
+              pendingRoleChange.member,
+              pendingRoleChange.role,
+              pendingRoleChange.transferOwnership,
+            );
+          }
+        }}
+      />
+      <ConfirmationDialog
+        open={Boolean(pendingRemoval)}
+        title={pendingRemoval ? `Remove ${pendingRemoval.displayName}?` : "Remove member?"}
+        description={<p>{pendingRemoval ? memberRemovalDescription(pendingRemoval) : ""}</p>}
+        confirmLabel="Remove member"
+        pending={Boolean(busyMemberId)}
+        onCancel={() => setPendingRemoval(undefined)}
+        onConfirm={() => {
+          if (pendingRemoval) void removeMember(pendingRemoval);
+        }}
+      />
     </section>
   );
 }

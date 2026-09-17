@@ -29,6 +29,56 @@ export class DropAttachmentError extends Error {
   }
 }
 
+export type DropAttachmentAction = "attach" | "replace" | "no-op" | "publish-late";
+export type ReviewedDropAttachmentAction = Exclude<DropAttachmentAction, "no-op">;
+
+export function classifyDropAttachmentAction({
+  drop,
+  requestedDraftId,
+  timestamp,
+}: {
+  drop: Pick<DropSlot, "status" | "scheduledFor" | "playlist">;
+  requestedDraftId: string;
+  timestamp: string;
+}): DropAttachmentAction {
+  const isLate = drop.status === "overdue"
+    || Date.parse(drop.scheduledFor) <= Date.parse(timestamp);
+  if (isLate) return "publish-late";
+  if (drop.playlist?.sourceDraftId === requestedDraftId) return "no-op";
+  return drop.playlist ? "replace" : "attach";
+}
+
+export function verifyReviewedDropAttachment({
+  drop,
+  draftId,
+  reviewedAction,
+  expectedCurrentDraftId,
+  timestamp,
+}: {
+  drop: DropSlot;
+  draftId: string;
+  reviewedAction: ReviewedDropAttachmentAction;
+  expectedCurrentDraftId: string | null;
+  timestamp: string;
+}) {
+  const currentDraftId = drop.playlist?.sourceDraftId ?? null;
+  const action = classifyDropAttachmentAction({
+    drop,
+    requestedDraftId: draftId,
+    timestamp,
+  });
+  if (action === "no-op") {
+    throw new DropAttachmentError("This playlist is already attached to the drop.", 409);
+  }
+  if (currentDraftId !== expectedCurrentDraftId || action !== reviewedAction) {
+    throw new DropAttachmentError(
+      "This drop changed after you reviewed it. Refresh and review the attachment again.",
+      409,
+    );
+  }
+  return action;
+}
+
 export function snapshotPlaylistDraft(
   draft: PlaylistDraft,
   theme?: Club["currentTheme"],
@@ -88,7 +138,14 @@ export function planDropAttachment({
   return snapshotPlaylistDraft(draft, club.currentTheme);
 }
 
-function attachDemoPlaylist(dropId: string, draftId: string, actorUserId: string, timestamp: string) {
+function attachDemoPlaylist(
+  dropId: string,
+  draftId: string,
+  actorUserId: string,
+  reviewedAction: ReviewedDropAttachmentAction,
+  expectedCurrentDraftId: string | null,
+  timestamp: string,
+) {
   const drop = demoDrops.find((item) => item.id === dropId);
   if (!drop) throw new DropAttachmentError("Drop not found.", 404);
   const draft = demoDrafts.find((item) => item.id === draftId && item.ownerId === actorUserId);
@@ -99,9 +156,16 @@ function attachDemoPlaylist(dropId: string, draftId: string, actorUserId: string
     item.clubId === club.id && item.userId === actorUserId
   );
   const playlist = planDropAttachment({ club, drop, draft, membership, actorUserId });
+  const action = verifyReviewedDropAttachment({
+    drop,
+    draftId,
+    reviewedAction,
+    expectedCurrentDraftId,
+    timestamp,
+  });
   drop.playlist = playlist;
   drop.updatedAt = timestamp;
-  if (drop.status === "overdue" || drop.scheduledFor <= timestamp) {
+  if (action === "publish-late") {
     drop.status = "published";
     drop.publishedAt = timestamp;
     club.rotationMemberIds = rotateQueue(club.rotationMemberIds, drop.assignedUserId);
@@ -130,9 +194,9 @@ function attachDemoPlaylist(dropId: string, draftId: string, actorUserId: string
     if (nextDrop) demoDrops.push(nextDrop);
     club.activeDropId = nextDrop?.id;
     club.updatedAt = timestamp;
-    return { drop, club, demo: true, nextDrop } as const;
+    return { drop, club, demo: true, nextDrop, action, playlist } as const;
   }
-  return { drop, club, demo: true } as const;
+  return { drop, club, demo: true, action, playlist } as const;
 }
 
 export interface DropAttachmentResult {
@@ -141,20 +205,33 @@ export interface DropAttachmentResult {
   demo: boolean;
   nextDrop?: DropSlot;
   outbox?: OutboxEvent;
+  action: ReviewedDropAttachmentAction;
+  playlist: PlaylistSnapshot;
 }
 
 export async function attachPlaylistToDrop({
   dropId,
   draftId,
   actorUserId,
+  reviewedAction,
+  expectedCurrentDraftId,
 }: {
   dropId: string;
   draftId: string;
   actorUserId: string;
+  reviewedAction: ReviewedDropAttachmentAction;
+  expectedCurrentDraftId: string | null;
 }): Promise<DropAttachmentResult> {
   const timestamp = new Date().toISOString();
   if (!integrations.mongo) {
-    return attachDemoPlaylist(dropId, draftId, actorUserId, timestamp);
+    return attachDemoPlaylist(
+      dropId,
+      draftId,
+      actorUserId,
+      reviewedAction,
+      expectedCurrentDraftId,
+      timestamp,
+    );
   }
 
   const db = await getDb();
@@ -184,8 +261,14 @@ export async function attachPlaylistToDrop({
         membership,
         actorUserId,
       });
-      const isLate = drop.status === "overdue" || drop.scheduledFor <= timestamp;
-      if (isLate) {
+      const action = verifyReviewedDropAttachment({
+        drop,
+        draftId,
+        reviewedAction,
+        expectedCurrentDraftId,
+        timestamp,
+      });
+      if (action === "publish-late") {
         const publication = await publishDropInTransaction({
           db,
           session,
@@ -206,6 +289,8 @@ export async function attachPlaylistToDrop({
           demo: false,
           nextDrop: publication.nextDrop,
           outbox: publication.outbox,
+          action,
+          playlist,
         };
         return;
       }
@@ -216,6 +301,9 @@ export async function attachPlaylistToDrop({
           status: "scheduled",
           scheduleVersion: drop.scheduleVersion,
           scheduledFor: { $gt: timestamp },
+          ...(expectedCurrentDraftId
+            ? { "playlist.sourceDraftId": expectedCurrentDraftId }
+            : { "playlist.sourceDraftId": { $exists: false } }),
         },
         { $set: { playlist, updatedAt: timestamp } },
         { session },
@@ -223,7 +311,13 @@ export async function attachPlaylistToDrop({
       if (update.modifiedCount !== 1) {
         throw new DropAttachmentError("This drop changed before the playlist could be attached.", 409);
       }
-      result = { drop: { ...drop, playlist, updatedAt: timestamp }, club, demo: false };
+      result = {
+        drop: { ...drop, playlist, updatedAt: timestamp },
+        club,
+        demo: false,
+        action,
+        playlist,
+      };
     }));
   } catch (error) {
     if (error instanceof DropPublicationConflict) {

@@ -4,6 +4,8 @@ import { requireViewer } from "@/lib/auth";
 import {
   decideJoinRequest,
   JoinRequestDecisionError,
+  JoinRequestWithdrawalError,
+  withdrawJoinRequest,
 } from "@/lib/join-request-service";
 
 const schema = z.object({ decision: z.enum(["approve", "decline"]) });
@@ -30,5 +32,25 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     return NextResponse.json({ error: "Could not update this join request." }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ requestId: string }> },
+) {
+  const { profile } = await requireViewer();
+  const { requestId } = await params;
+  try {
+    const result = await withdrawJoinRequest({
+      requestId,
+      actorUserId: profile.id,
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof JoinRequestWithdrawalError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "Could not withdraw this join request." }, { status: 500 });
   }
 }

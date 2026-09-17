@@ -3,6 +3,12 @@
 import Image from "next/image";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Send, SmilePlus, Users } from "lucide-react";
+import type {
+  ConnectionStateChange,
+  InboundMessage,
+  Realtime as RealtimeClient,
+  RealtimeChannel,
+} from "ably";
 import { Bubble, BubbleContent, BubbleReactions } from "@/components/ui/bubble";
 import {
   filterMentionCandidates,
@@ -13,10 +19,22 @@ import {
   type ChatMentionMember,
 } from "@/lib/chat-mentions";
 import { reconcileSentMessage } from "@/lib/chat-messages";
-import { toggleChatReaction } from "@/lib/chat-reactions";
+import {
+  applyCanonicalChatReaction,
+  CHAT_QUICK_REACTIONS,
+  rollbackOptimisticChatReaction,
+  startOptimisticChatReaction,
+  type ChatReactionClientState,
+  type ChatReactionUpdate,
+} from "@/lib/chat-reactions";
+import {
+  chatPresenceLabel,
+  connectingChatPresence,
+  readyChatPresence,
+  unavailableChatPresence,
+  type ChatPresenceState,
+} from "@/lib/chat-presence";
 import type { ChatMessage } from "@/types/domain";
-
-const quickReactions = ["🔥", "💿", "❤️", "🫡"];
 
 type RealtimeChatMessage = ChatMessage & { clientMessageId?: string };
 
@@ -50,17 +68,25 @@ export function ChatPanel({
   mentionableUsers: ChatMentionMember[];
   realtimeEnabled: boolean;
 }) {
-  const [messages, setMessages] = useState(initialMessages);
+  const [chatState, setChatState] = useState<ChatReactionClientState>({
+    messages: initialMessages,
+    pendingByMessageId: {},
+  });
   const [body, setBody] = useState("");
   const [caretPosition, setCaretPosition] = useState(0);
   const [selectedMentionIds, setSelectedMentionIds] = useState<string[]>([]);
   const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const [mentionMenuDismissed, setMentionMenuDismissed] = useState(false);
   const [sendError, setSendError] = useState("");
+  const [reactionError, setReactionError] = useState("");
   const [typing, setTyping] = useState<string | null>(null);
-  const [onlineCount, setOnlineCount] = useState(realtimeEnabled ? 1 : 4);
+  const [presence, setPresence] = useState<ChatPresenceState>(
+    realtimeEnabled ? connectingChatPresence() : unavailableChatPresence(),
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesViewportRef = useRef<HTMLDivElement>(null);
+  const pendingReactionRequestsRef = useRef(new Set<string>());
+  const messages = chatState.messages;
   const previousMessageCountRef = useRef(messages.length);
   const hasPositionedMessagesRef = useRef(false);
   const messageCount = messages.length;
@@ -80,26 +106,120 @@ export function ChatPanel({
   useEffect(() => {
     if (!realtimeEnabled) return;
     let disposed = false;
-    let realtime: { close: () => void } | undefined;
-    void import("ably").then(({ Realtime }) => {
-      if (disposed) return;
+    let realtime: RealtimeClient | undefined;
+    let channel: RealtimeChannel | undefined;
+    let enteredPresence = false;
+
+    const refreshPresence = async () => {
+      if (disposed || !channel) return;
+      try {
+        const members = await channel.presence.get();
+        if (!disposed) setPresence(readyChatPresence(members.length));
+      } catch {
+        if (!disposed) setPresence(unavailableChatPresence());
+      }
+    };
+    const handleMessage = (event: InboundMessage) => {
+      const { clientMessageId, ...message } = event.data as RealtimeChatMessage;
+      setChatState((current) => ({
+        ...current,
+        messages: clientMessageId
+          ? reconcileSentMessage(current.messages, clientMessageId, message)
+          : current.messages.some((item) => item.id === message.id)
+            ? current.messages
+            : [...current.messages, message],
+      }));
+    };
+    const handleTyping = (event: InboundMessage) => {
+      const data = event.data as { userId: string; name: string; typing: boolean };
+      if (data.userId !== currentUser.id) setTyping(data.typing ? data.name : null);
+    };
+    const handleReaction = (event: InboundMessage) => {
+      const update = event.data as ChatReactionUpdate;
+      if (
+        !update
+        || typeof update.messageId !== "string"
+        || !Array.isArray(update.reactions)
+        || !Number.isInteger(update.reactionRevision)
+      ) return;
+      setChatState((current) => applyCanonicalChatReaction(
+        current,
+        update,
+        currentUser.id,
+      ));
+    };
+    const handlePresenceChange = () => {
+      void refreshPresence();
+    };
+    const handleConnectionChange = (change: ConnectionStateChange) => {
+      if (change.current === "failed" || change.current === "suspended" || change.current === "disconnected") {
+        setPresence(unavailableChatPresence());
+        return;
+      }
+      if (change.current === "connecting") {
+        setPresence(connectingChatPresence());
+        return;
+      }
+      if (change.current === "connected") {
+        setPresence(connectingChatPresence());
+        void refreshPresence();
+      }
+    };
+    const disposeRealtime = () => {
+      const currentRealtime = realtime;
+      const currentChannel = channel;
+      const shouldLeave = enteredPresence;
+      realtime = undefined;
+      channel = undefined;
+      enteredPresence = false;
+      if (!currentRealtime || !currentChannel) return;
+      currentChannel.unsubscribe("message", handleMessage);
+      currentChannel.unsubscribe("typing", handleTyping);
+      currentChannel.unsubscribe("reaction", handleReaction);
+      currentChannel.presence.unsubscribe(["enter", "leave", "update"], handlePresenceChange);
+      currentRealtime.connection.off(handleConnectionChange);
+      if (shouldLeave) {
+        void currentChannel.presence.leave().catch(() => undefined);
+      }
+      currentRealtime.close();
+    };
+
+    void import("ably").then(async ({ Realtime }) => {
       const client = new Realtime({ authUrl: `/api/ably/token?threadType=${threadType}&threadId=${threadId}` });
       realtime = client;
-      const channel = client.channels.get(channelName);
-      void channel.presence.enter({ name: currentUser.displayName });
-      void channel.presence.get().then((members) => setOnlineCount(members.length));
-      channel.subscribe("message", (event) => {
-        const { clientMessageId, ...message } = event.data as RealtimeChatMessage;
-        setMessages((current) => clientMessageId
-          ? reconcileSentMessage(current, clientMessageId, message)
-          : current.some((item) => item.id === message.id) ? current : [...current, message]);
-      });
-      channel.subscribe("typing", (event) => {
-        const data = event.data as { userId: string; name: string; typing: boolean };
-        if (data.userId !== currentUser.id) setTyping(data.typing ? data.name : null);
-      });
+      channel = client.channels.get(channelName);
+      if (disposed) {
+        disposeRealtime();
+        return;
+      }
+      client.connection.on([
+        "connected",
+        "connecting",
+        "disconnected",
+        "suspended",
+        "failed",
+      ], handleConnectionChange);
+      await Promise.all([
+        channel.subscribe("message", handleMessage),
+        channel.subscribe("typing", handleTyping),
+        channel.subscribe("reaction", handleReaction),
+        channel.presence.subscribe(["enter", "leave", "update"], handlePresenceChange),
+      ]);
+      if (disposed) {
+        disposeRealtime();
+        return;
+      }
+      await channel.presence.enter({ name: currentUser.displayName });
+      enteredPresence = true;
+      await refreshPresence();
+    }).catch(() => {
+      disposeRealtime();
+      if (!disposed) setPresence(unavailableChatPresence());
     });
-    return () => { disposed = true; realtime?.close(); };
+    return () => {
+      disposed = true;
+      disposeRealtime();
+    };
   }, [channelName, currentUser.displayName, currentUser.id, realtimeEnabled, threadId, threadType]);
 
   useEffect(() => {
@@ -141,9 +261,13 @@ export function ChatPanel({
       body: text,
       mentionedUserIds,
       reactions: [],
+      reactionRevision: 0,
       createdAt: new Date().toISOString(),
     };
-    setMessages((current) => [...current, optimistic]);
+    setChatState((current) => ({
+      ...current,
+      messages: [...current.messages, optimistic],
+    }));
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -152,9 +276,15 @@ export function ChatPanel({
       });
       if (!response.ok) throw new Error("Could not send message");
       const { message } = await response.json() as { message: ChatMessage };
-      setMessages((current) => reconcileSentMessage(current, optimistic.id, message));
+      setChatState((current) => ({
+        ...current,
+        messages: reconcileSentMessage(current.messages, optimistic.id, message),
+      }));
     } catch {
-      setMessages((current) => current.filter((message) => message.id !== optimistic.id));
+      setChatState((current) => ({
+        ...current,
+        messages: current.messages.filter((message) => message.id !== optimistic.id),
+      }));
       setBody(text);
       setCaretPosition(text.length);
       setSelectedMentionIds(mentionedUserIds);
@@ -210,21 +340,43 @@ export function ChatPanel({
     }
   }
 
-  function react(messageId: string, emoji: string) {
-    setMessages((current) => current.map((message) => {
-      if (message.id !== messageId) return message;
-      return {
-        ...message,
-        reactions: toggleChatReaction(message.reactions, currentUser.id, emoji),
-      };
-    }));
+  async function react(messageId: string, emoji: string) {
+    if (pendingReactionRequestsRef.current.has(messageId)) return;
+    pendingReactionRequestsRef.current.add(messageId);
+    setReactionError("");
+    setChatState((current) => startOptimisticChatReaction(
+      current,
+      messageId,
+      currentUser.id,
+      emoji,
+    ));
+    try {
+      const response = await fetch(`/api/chat/messages/${encodeURIComponent(messageId)}/reaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji }),
+      });
+      if (!response.ok) throw new Error("Could not save reaction");
+      const update = await response.json() as ChatReactionUpdate;
+      setChatState((current) => applyCanonicalChatReaction(
+        current,
+        update,
+        currentUser.id,
+        true,
+      ));
+    } catch {
+      setChatState((current) => rollbackOptimisticChatReaction(current, messageId));
+      setReactionError("Reaction not saved. Try again.");
+    } finally {
+      pendingReactionRequestsRef.current.delete(messageId);
+    }
   }
 
   return (
     <section className="chat-panel">
       <header className="chat-header">
         <div><span className="section-kicker">Live room</span><h2>{threadType === "club" ? "Club chat" : "Drop chat"}</h2></div>
-        <span className="presence"><Users size={14} /> {onlineCount} here</span>
+        <span className="presence" aria-live="polite"><Users size={14} /> {chatPresenceLabel(presence)}</span>
       </header>
       <div className="chat-messages" ref={messagesViewportRef} aria-live="polite">
         {messages.map((message) => {
@@ -256,7 +408,8 @@ export function ChatPanel({
                       <button
                         type="button"
                         aria-label={`${reaction.userIds.includes(currentUser.id) ? "Remove" : "Add"} ${reaction.emoji} reaction; ${reaction.userIds.length} ${reaction.userIds.length === 1 ? "reaction" : "reactions"}`}
-                        onClick={() => react(message.id, reaction.emoji)}
+                        onClick={() => void react(message.id, reaction.emoji)}
+                        disabled={Boolean(chatState.pendingByMessageId[message.id])}
                         key={reaction.emoji}
                       >
                         {reaction.emoji} {reaction.userIds.length}
@@ -264,12 +417,13 @@ export function ChatPanel({
                     ))}
                     <details className="reaction-picker">
                       <summary aria-label="Add reaction"><SmilePlus size={14} /></summary>
-                      <span>{quickReactions.map((emoji) => <button
+                      <span>{CHAT_QUICK_REACTIONS.map((emoji) => <button
                         type="button"
                         aria-label={`React with ${emoji}`}
                         key={emoji}
+                        disabled={Boolean(chatState.pendingByMessageId[message.id])}
                         onClick={(event) => {
-                          react(message.id, emoji);
+                          void react(message.id, emoji);
                           event.currentTarget.closest("details")?.removeAttribute("open");
                         }}
                       >{emoji}</button>)}</span>
@@ -282,6 +436,7 @@ export function ChatPanel({
         })}
         {!messages.length && <div className="empty-chat">Start the conversation when the needle drops.</div>}
       </div>
+      {reactionError && <p className="chat-composer-error" role="status">{reactionError}</p>}
       <div className="typing-line">{typing ? `${typing} is typing…` : " "}</div>
       <form className="chat-composer" onSubmit={submit}>
         <label className="sr-only" htmlFor={`${threadId}-message`}>Message</label>

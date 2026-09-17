@@ -17,14 +17,15 @@ import { createAnchoredRecurrence, nextOccurrences, occurrenceKey } from "@/lib/
 import { countOwnedClubs, createId } from "@/lib/repository";
 import { scheduleDropTasks } from "@/lib/scheduler";
 import { THEME_DESCRIPTION_MAX_LENGTH } from "@/lib/theme-description";
+import { isValidTimeZone } from "@/lib/timezones";
 import type { Club, ClubMembership, DropSlot } from "@/types/domain";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(70), description: z.string().trim().min(10).max(CLUB_DESCRIPTION_MAX_LENGTH),
   descriptionHtml: z.string().max(CLUB_DESCRIPTION_HTML_MAX_LENGTH).optional(),
   accent: z.string().regex(CLUB_ACCENT_PATTERN, "Choose a valid primary color.").transform((value) => value.toLowerCase()).default(DEFAULT_CLUB_ACCENT),
-  visibility: z.enum(["public", "private"]), startsOn: z.string().date(), localTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  timezone: z.string().min(3).max(80), frequency: z.enum(["daily", "weekly", "monthly"]),
+  visibility: z.enum(["public", "private"]).default("private"), startsOn: z.string().date(), localTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  timezone: z.string().min(3).max(80).refine(isValidTimeZone, "Choose a valid IANA timezone."), frequency: z.enum(["daily", "weekly", "monthly"]),
   interval: z.coerce.number().int().min(1).max(52), theme: z.string().trim().min(2).max(100).optional(),
   guidance: z.string().trim().max(THEME_DESCRIPTION_MAX_LENGTH).optional(),
   clubImageUrl: z.string().url().max(1_000).optional(), themeImageUrl: z.string().url().max(1_000).optional(),

@@ -5,7 +5,7 @@ import { ClubAdminTabs } from "@/components/club-admin-tabs";
 import { ClubMembers } from "@/components/club-members";
 import { requireViewer } from "@/lib/auth";
 import { canUseClubManagement } from "@/lib/club-management";
-import { getClubBySlug, getClubMemberships, getUsersByIds } from "@/lib/repository";
+import { getClubBySlug, getClubDrops, getClubMemberships, getUsersByIds } from "@/lib/repository";
 
 export default async function ClubMembersSettingsPage({
   params,
@@ -22,8 +22,15 @@ export default async function ClubMembersSettingsPage({
   if (!viewerMembership || viewerMembership.role === "member") notFound();
   if (!canUseClubManagement(viewerMembership, features.clubAdminTools)) redirect("/pricing");
 
-  const users = await getUsersByIds(memberships.map((membership) => membership.userId));
+  const [users, drops] = await Promise.all([
+    getUsersByIds(memberships.map((membership) => membership.userId)),
+    getClubDrops(club.id),
+  ]);
   const usersById = new Map(users.map((user) => [user.id, user]));
+  const activeDrop = drops.find((drop) =>
+    drop.id === club.activeDropId
+    && (drop.status === "scheduled" || drop.status === "overdue")
+  );
 
   return <>
     <div className="page-actions" style={{ marginBottom: 22 }}><Link href={`/app/clubs/${club.slug}`} className="button button-ghost button-small"><ArrowLeft size={14} /> Back to {club.name}</Link></div>
@@ -45,6 +52,17 @@ export default async function ClubMembersSettingsPage({
           initials: user?.initials ?? "DM",
           imageUrl: user?.imageUrl,
           role: membership.role,
+          canRemove:
+            membership.userId !== profile.id
+            && membership.role !== "owner"
+            && (
+              viewerMembership.role === "owner"
+              || (viewerMembership.role === "admin" && membership.role === "member")
+            ),
+          ownsActiveTurn: activeDrop?.assignedUserId === membership.userId,
+          activeTurnHasPlaylist:
+            activeDrop?.assignedUserId === membership.userId
+            && Boolean(activeDrop.playlist),
           isPrimaryOwner:
             membership.role === "owner"
             && membership.userId === club.custody.activeOwnerId,

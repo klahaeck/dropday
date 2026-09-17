@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { deliverBrowserNotifications } from "@/lib/browser-push";
 import { getDb, getMongoClient } from "@/lib/db";
+import { escapeMongoRegex, matchesDiscoverQuery } from "@/lib/discover-search";
 import { integrations } from "@/lib/env";
 import {
   demoClubs,
@@ -47,10 +48,28 @@ export async function listActiveMembershipsForUser(
     .toArray();
 }
 
-export async function listPublicClubs(): Promise<Club[]> {
-  if (!integrations.mongo) return demoClubs.filter((club) => club.visibility === "public" && club.custody.status !== "archived");
+export async function listPublicClubs(normalizedQuery = ""): Promise<Club[]> {
+  if (!integrations.mongo) {
+    return demoClubs
+      .filter((club) => club.visibility === "public" && club.custody.status !== "archived")
+      .filter((club) => matchesDiscoverQuery(club, normalizedQuery))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
   const db = await getDb();
-  return db.collection<Club>("clubs").find({ visibility: "public", "custody.status": { $ne: "archived" } }).sort({ updatedAt: -1 }).toArray();
+  const search = normalizedQuery
+    ? {
+        $or: [
+          { name: { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
+          { description: { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
+          { "currentTheme.name": { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
+          { "currentTheme.guidance": { $regex: escapeMongoRegex(normalizedQuery), $options: "i" } },
+        ],
+      }
+    : {};
+  return db.collection<Club>("clubs")
+    .find({ visibility: "public", "custody.status": { $ne: "archived" }, ...search })
+    .sort({ updatedAt: -1 })
+    .toArray();
 }
 
 export async function getClubBySlug(slug: string): Promise<Club | null> {
